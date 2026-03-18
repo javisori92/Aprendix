@@ -2017,6 +2017,7 @@ function d(id) { return DOM[id] || document.getElementById(id); }
 let _questionIndex = null;
 let _categoriesCache = null;
 let _catQuestionsCache = null;
+let _catSubcatCountCache = null; // Caché: { 'cat\tsubcat': count }
 
 // ══════════════════════════════════════════════
 //  DATA LAYER
@@ -2082,17 +2083,44 @@ function saveDB() {
   _saveDBTimer = setTimeout(() => {
     _saveDBTimer = null;
     invalidateQuestionIndex();
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); } catch(e) {}
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); } catch(e) {
+      if (e.name === 'QuotaExceededError') {
+        showToast('Almacenamiento lleno. Elimina algunas preguntas.', 'error');
+      }
+    }
   }, 300);
 }
 function saveDBNow() {
   if (_saveDBTimer) { clearTimeout(_saveDBTimer); _saveDBTimer = null; }
   invalidateQuestionIndex();
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); } catch(e) {}
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); } catch(e) {
+    if (e.name === 'QuotaExceededError') {
+      showToast('Almacenamiento lleno. Elimina algunas preguntas.', 'error');
+    }
+  }
 }
 
-function invalidateQuestionIndex() { _questionIndex = null; _categoriesCache = null; _catQuestionsCache = null; }
+// ── Guardar data pendiente antes de cerrar ──
+window.addEventListener('beforeunload', () => {
+  if (_saveDBTimer) {
+    clearTimeout(_saveDBTimer);
+    _saveDBTimer = null;
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); } catch(e) {}
+  }
+});
+
+function invalidateQuestionIndex() { _questionIndex = null; _categoriesCache = null; _catQuestionsCache = null; _catSubcatCountCache = null; }
 function invalidateCategoriesCache() { _categoriesCache = null; }
+
+// Fn optimizada: obtener conteo de preguntas por (cat, subcat) usando caché
+function getQuestionCountCached(cat, subcat = '') {
+  const key = cat + '\t' + subcat;
+  if (!_catSubcatCountCache) _catSubcatCountCache = {};
+  if (_catSubcatCountCache[key] !== undefined) return _catSubcatCountCache[key];
+  const count = db.questions.filter(q => q.cat === cat && (q.subcat||'') === subcat).length;
+  _catSubcatCountCache[key] = count;
+  return count;
+}
 
 function getCategories() {
   if (_categoriesCache) return _categoriesCache;
@@ -2398,9 +2426,62 @@ function renderSelectionList(containerId, sel, cats, onChange) {
       <div class="sel-cat-name">${cat}</div>
       <div class="sel-cat-count">${catSel.selected ? selCount+'/'+totalCount : totalCount+' preg.'}</div>
     `;
+    
+    // ✅ OPTIMIZACIÓN: actualizar estado sin re-renderizar todo
     row.onclick = () => {
-      sel[cat] = sel[cat].selected ? { selected: false, subcats: null } : { selected: true, subcats: null };
-      renderSelectionList(containerId, sel, cats, onChange);
+      const wasSelected = sel[cat].selected;
+      sel[cat] = wasSelected ? { selected: false, subcats: null } : { selected: true, subcats: null };
+      // Actualizar SOLO este card
+      card.className = 'sel-cat-card' + (sel[cat].selected ? ' has-selection' : '');
+      // Actualizar el toggle visual
+      const toggle = row.querySelector('.sel-cat-toggle');
+      toggle.classList.toggle('on');
+      toggle.classList.toggle('partial', false);
+      toggle.innerHTML = sel[cat].selected ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.75l6 6 9-13.5"/></svg>' : '';
+      // Actualizar contador
+      const count = row.querySelector('.sel-cat-count');
+      if (sel[cat].selected) {
+        const poolCount = db.questions.filter(q => q.cat === cat).length;
+        count.textContent = poolCount + '/' + totalCount;
+      } else {
+        count.textContent = totalCount + ' preg.';
+      }
+      // Si se seleccionó y hay subcats, mostrarlos
+      if (sel[cat].selected && groups.length > 1) {
+        if (!card.querySelector('.sel-subcat-list')) {
+          const subcatList = document.createElement('div');
+          subcatList.className = 'sel-subcat-list';
+          groups.forEach(s => {
+            const label = s === '' ? 'Sin subcategoría' : s;
+            const subCount = db.questions.filter(q => q.cat === cat && (q.subcat||'') === s).length;
+            const subRow = document.createElement('div');
+            subRow.className = 'sel-subcat-row on';
+            subRow.innerHTML = `
+              <div class="sel-subcat-toggle on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.75l6 6 9-13.5"/></svg></div>
+              <div class="sel-subcat-name">${label}</div>
+              <div class="sel-subcat-count">${subCount}</div>
+            `;
+            subRow.onclick = (e) => {
+              e.stopPropagation();
+              if (sel[cat].subcats === null) sel[cat].subcats = [...groups];
+              if (sel[cat].subcats.includes(s)) {
+                if (sel[cat].subcats.length > 1) sel[cat].subcats = sel[cat].subcats.filter(x => x !== s);
+              } else {
+                sel[cat].subcats.push(s);
+                if (sel[cat].subcats.length === groups.length) sel[cat].subcats = null;
+              }
+              subRow.classList.toggle('on');
+              subRow.querySelector('.sel-subcat-toggle').classList.toggle('on');
+              if (onChange) onChange();
+            };
+            subcatList.appendChild(subRow);
+          });
+          card.appendChild(subcatList);
+        }
+      } else if (card.querySelector('.sel-subcat-list')) {
+        // Si se deseleccionó, remover subcats
+        card.querySelector('.sel-subcat-list').remove();
+      }
       if (onChange) onChange();
     };
     card.appendChild(row);
@@ -2414,7 +2495,7 @@ function renderSelectionList(containerId, sel, cats, onChange) {
         const subCount = db.questions.filter(q => q.cat === cat && (q.subcat||'') === s).length;
         const isOn = catSel.subcats === null || catSel.subcats.includes(s);
         const subRow = document.createElement('div');
-        subRow.className = 'sel-subcat-row';
+        subRow.className = 'sel-subcat-row' + (isOn ? ' on' : '');
         subRow.innerHTML = `
           <div class="sel-subcat-toggle ${isOn ? 'on' : ''}">
             ${isOn ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.75l6 6 9-13.5"/></svg>' : ''}
@@ -2431,7 +2512,8 @@ function renderSelectionList(containerId, sel, cats, onChange) {
             sel[cat].subcats.push(s);
             if (sel[cat].subcats.length === groups.length) sel[cat].subcats = null;
           }
-          renderSelectionList(containerId, sel, cats, onChange);
+          subRow.classList.toggle('on');
+          subRow.querySelector('.sel-subcat-toggle').classList.toggle('on');
           if (onChange) onChange();
         };
         subcatList.appendChild(subRow);
@@ -2668,8 +2750,11 @@ function shuffleOpts(q) {
   const a = q.a, b = q.b, c = q.c, d = q.d;
   const origCorrect = typeof q.correct === 'number' ? q.correct : parseInt(q.correct);
 
-  if (!a || !b || !c || !d || isNaN(origCorrect)) {
-    return { opts: [a||'', b||'', c||'', d||''], correct: origCorrect || 0 };
+  // ✅ VALIDACIÓN: no permitir opciones vacías
+  if (!a || !b || !c || !d || isNaN(origCorrect) || origCorrect < 0 || origCorrect > 3) {
+    console.error('Pregunta con opciones inválidas:', q.id);
+    // Retornar opciones por defecto en lugar de opciones rotas
+    return { opts: ['(pregunta inválida)', '', '', ''], correct: 0 };
   }
 
   // Use index objects — immune to duplicate answer text
@@ -3570,12 +3655,15 @@ function buildSwipeRow({ label, sublabel, onTap, onRename, onDelete }) {
 
     // Touch/swipe handling
     let startX = 0, startY = 0, dx = 0, isSwiping = false, isOpen = false;
-    item.addEventListener('touchstart', e => {
+    
+    // Guardar referencias a handlers para poder removerlos después (evita memory leak)
+    const handleTouchStart = (e) => {
       if (_activeSwipeRow && _activeSwipeRow !== wrapper) closeSwipeRow(_activeSwipeRow);
       startX = e.touches[0].clientX; startY = e.touches[0].clientY;
       dx = 0; isSwiping = false;
-    }, { passive: true });
-    item.addEventListener('touchmove', e => {
+    };
+    
+    const handleTouchMove = (e) => {
       dx = e.touches[0].clientX - startX;
       const dy = e.touches[0].clientY - startY;
       if (!isSwiping && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 6) isSwiping = true;
@@ -3583,8 +3671,9 @@ function buildSwipeRow({ label, sublabel, onTap, onRename, onDelete }) {
       const current = isOpen ? -SWIPE_W + Math.min(0, dx) : Math.min(0, Math.max(-SWIPE_W, dx));
       item.style.transition = 'none';
       item.style.transform = `translateX(${Math.max(-SWIPE_W, current)}px)`;
-    }, { passive: true });
-    item.addEventListener('touchend', () => {
+    };
+    
+    const handleTouchEnd = () => {
       if (!isSwiping) { isOpen ? closeSwipeRow(wrapper) : onTap(); return; }
       item.style.transition = '';
       const threshold = SWIPE_W * 0.4;
@@ -3592,12 +3681,22 @@ function buildSwipeRow({ label, sublabel, onTap, onRename, onDelete }) {
       else if (isOpen && dx > threshold) closeSwipeRow(wrapper);
       else item.style.transform = isOpen ? `translateX(-${SWIPE_W}px)` : 'translateX(0)';
       isSwiping = false;
-    });
+    };
+    
+    item.addEventListener('touchstart', handleTouchStart, { passive: true });
+    item.addEventListener('touchmove', handleTouchMove, { passive: true });
+    item.addEventListener('touchend', handleTouchEnd);
     item.addEventListener('click', () => { if (!isOpen) onTap(); });
-
+    
+    // Guardar referencias para cleanup posterior
     wrapper._item = item;
     wrapper._isOpen = () => isOpen;
     wrapper._open = v => { isOpen = v; };
+    wrapper._cleanup = () => {
+      item.removeEventListener('touchstart', handleTouchStart);
+      item.removeEventListener('touchmove', handleTouchMove);
+      item.removeEventListener('touchend', handleTouchEnd);
+    };
     wrapper.appendChild(actions);
     wrapper.appendChild(item);
 
