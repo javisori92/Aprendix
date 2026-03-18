@@ -987,6 +987,9 @@
 
 <!-- ═══ HOME SCREEN ═══ -->
 <div id="screen-home" class="screen">
+  <button class="back-btn" onclick="goSettings()" style="position:absolute;top:16px;right:16px;width:40px;height:40px;background:var(--surface-b);border-radius:10px;z-index:10;font-size:26px;display:flex;align-items:center;justify-content:center;line-height:1;">
+    ⚙️
+  </button>
   <div class="logo-area">
     <div class="logo-mark">Aprendix</div>
     <div class="logo-title">Hola,<br>¡A estudiar!</div>
@@ -1099,12 +1102,22 @@
 
   </div>
 
-  <!-- AJUSTES -->
-  <div class="section-title" style="margin-top:8px;">Ajustes</div>
-  <div class="card" style="padding:0;">
+</div>
+
+<!-- ═══ SETTINGS SCREEN ═══ -->
+<div id="screen-settings" class="screen">
+  <div class="page-header">
+    <button class="back-btn" onclick="goHome()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+    </button>
+    <h1>Ajustes</h1>
+  </div>
+
+  <div class="section-title">Apariencia</div>
+  <div class="card" style="padding:0;margin-bottom:20px;">
     <div class="settings-row" onclick="toggleTheme()">
       <div class="settings-info">
-        <span class="settings-icon">🌙</span>
+        <div class="settings-icon-wrap">🌙</div>
         <div>
           <div class="settings-label">Modo oscuro</div>
           <div class="settings-sub">Cambia entre tema claro y oscuro</div>
@@ -1114,10 +1127,13 @@
         <div class="ios-toggle-knob"></div>
       </div>
     </div>
-    <div class="settings-divider"></div>
+  </div>
+
+  <div class="section-title">Audio</div>
+  <div class="card" style="padding:0;margin-bottom:20px;">
     <div class="settings-row" onclick="toggleSound()">
       <div class="settings-info">
-        <span class="settings-icon">🔊</span>
+        <div class="settings-icon-wrap">🔊</div>
         <div>
           <div class="settings-label">Sonidos</div>
           <div class="settings-sub">Efectos de sonido al responder</div>
@@ -1352,29 +1368,11 @@
       </div>
     </div>
 
-    <button class="btn btn-primary" onclick="startCustomExam()">
+    <button class="btn btn-primary" id="btn-start-exam" onclick="startCustomExam()">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:18px;height:18px"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/></svg>
       Comenzar examen
     </button>
 
-    <div class="card" style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-      <div>
-        <div style="font-size:13px;font-weight:600;">Modo adaptativo</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px;">Las preguntas más falladas tienen más probabilidad de salir</div>
-      </div>
-      <div id="adaptive-toggle" onclick="toggleAdaptive()" style="
-        width:44px;height:26px;border-radius:13px;
-        background:var(--surface3);border:1px solid var(--border);
-        position:relative;cursor:pointer;transition:background .25s;
-        touch-action:manipulation;flex-shrink:0;
-      ">
-        <div id="adaptive-knob" style="
-          position:absolute;top:3px;left:3px;
-          width:18px;height:18px;border-radius:50%;
-          background:var(--text3);transition:all .25s;
-        "></div>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -2014,6 +2012,11 @@
 <script>
 // DOM cache — declared first so all IIFEs and functions can safely reference it
 const DOM = {};
+function d(id) { return DOM[id] || document.getElementById(id); }
+
+let _questionIndex = null;
+let _categoriesCache = null;
+let _catQuestionsCache = null;
 
 // ══════════════════════════════════════════════
 //  DATA LAYER
@@ -2022,6 +2025,7 @@ const STORE_KEY = 'aprendix_data';
 let db = { questions: [] };
 
 function loadDB() {
+  invalidateQuestionIndex();
   try {
     const raw = localStorage.getItem(STORE_KEY);
     if (raw) db = JSON.parse(raw);
@@ -2072,18 +2076,49 @@ function getAllSubcatGroups(cats) {
   });
 }
 
+let _saveDBTimer = null;
 function saveDB() {
+  if (_saveDBTimer) clearTimeout(_saveDBTimer);
+  _saveDBTimer = setTimeout(() => {
+    _saveDBTimer = null;
+    invalidateQuestionIndex();
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); } catch(e) {}
+  }, 300);
+}
+function saveDBNow() {
+  if (_saveDBTimer) { clearTimeout(_saveDBTimer); _saveDBTimer = null; }
+  invalidateQuestionIndex();
   try { localStorage.setItem(STORE_KEY, JSON.stringify(db)); } catch(e) {}
 }
 
+function invalidateQuestionIndex() { _questionIndex = null; _categoriesCache = null; _catQuestionsCache = null; }
+function invalidateCategoriesCache() { _categoriesCache = null; }
+
 function getCategories() {
+  if (_categoriesCache) return _categoriesCache;
   const fromQuestions = db.questions.map(q => q.cat);
   const all = [...new Set([...(db.categories || []), ...fromQuestions])];
-  return all.sort();
+  _categoriesCache = all.sort();
+  return _categoriesCache;
 }
 
 function getQuestionsByCat(cat) {
-  return db.questions.filter(q => q.cat === cat);
+  if (!_catQuestionsCache) {
+    _catQuestionsCache = {};
+    db.questions.forEach(q => {
+      if (!_catQuestionsCache[q.cat]) _catQuestionsCache[q.cat] = [];
+      _catQuestionsCache[q.cat].push(q);
+    });
+  }
+  return _catQuestionsCache[cat] || [];
+}
+
+function buildQuestionIndex() {
+  _questionIndex = new Map(db.questions.map(q => [q.id, q]));
+}
+function getQuestionById(id) {
+  if (!_questionIndex) buildQuestionIndex();
+  return _questionIndex.get(id);
 }
 
 function genId() {
@@ -2147,6 +2182,9 @@ function showScreen(id) {
     document.getElementById('nav-home').classList.add('active');
     closeModeExpandPanels(); // always reset panels when home is shown
   }
+  if (id === 'screen-settings') {
+    closeModeExpandPanels(); // reset panels when going to settings
+  }
   if (id === 'screen-stats') document.getElementById('nav-stats').classList.add('active');
   if (id === 'screen-editor' || id === 'screen-editor-cat' || id === 'screen-editor-subcat') document.getElementById('nav-editor').classList.add('active');
 }
@@ -2161,6 +2199,10 @@ function goHome() {
   updateHomeStats();
   closeModeExpandPanels();
   showScreen('screen-home');
+}
+
+function goSettings() {
+  showScreen('screen-settings');
 }
 
 function goEditor() {
@@ -2244,8 +2286,10 @@ function updateHomeStats() {
 
 function calcStreak(st) {
   if (!st.activityDays || st.activityDays.length === 0) return 0;
-  const today = new Date().toISOString().slice(0,10);
-  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+  const now = new Date();
+  const utc1Date = new Date(now.getTime() + 60 * 60 * 1000); // UTC+1
+  const today = utc1Date.toISOString().slice(0,10);
+  const yesterday = new Date(utc1Date.getTime() - 86400000).toISOString().slice(0,10);
   const days = [...new Set(st.activityDays)].sort().reverse();
   if (days[0] !== today && days[0] !== yesterday) return 0;
   let streak = 1;
@@ -2260,7 +2304,9 @@ function calcStreak(st) {
 }
 
 function recordActivity(st) {
-  const today = new Date().toISOString().slice(0,10);
+  const now = new Date();
+  const utc1Date = new Date(now.getTime() + 60 * 60 * 1000); // UTC+1
+  const today = utc1Date.toISOString().slice(0,10);
   if (!st.activityDays) st.activityDays = [];
   if (!st.activityDays.includes(today)) st.activityDays.push(today);
   // Keep last 365 days only
@@ -2308,14 +2354,17 @@ function goExamConfig(mode) {
     });
   } else {
     customSelection = {};
-    cats.forEach(cat => { customSelection[cat] = { selected: true, subcats: null }; });
-    renderSelectionList('custom-sel-list', customSelection, cats);
+    // Start with NONE selected — same as study config
+    cats.forEach(cat => { customSelection[cat] = { selected: false, subcats: null }; });
+    renderSelectionList('custom-sel-list', customSelection, cats, () => updateExamConfigCount());
     customQty = 10;
     document.getElementById('qty-display').textContent = customQty;
     setQtyMode('custom');
     setTimeMode('custom');
+    updateExamConfigCount();
   }
   showScreen('screen-exam-config');
+  updateExamConfigCount(); // Ensure button state is updated after screen is shown
 }
 
 // ── Shared selection renderer ──
@@ -2350,8 +2399,6 @@ function renderSelectionList(containerId, sel, cats, onChange) {
       <div class="sel-cat-count">${catSel.selected ? selCount+'/'+totalCount : totalCount+' preg.'}</div>
     `;
     row.onclick = () => {
-      const otherSelected = cats.filter(c => c !== cat && sel[c] && sel[c].selected);
-      if (sel[cat].selected && otherSelected.length === 0) return;
       sel[cat] = sel[cat].selected ? { selected: false, subcats: null } : { selected: true, subcats: null };
       renderSelectionList(containerId, sel, cats, onChange);
       if (onChange) onChange();
@@ -2460,6 +2507,7 @@ let examTimeLimitSec = 0;
 let examPenalty = false;
 let lastExamConfig = null;
 let _examFlagged = new Set();
+let examTimeoutTriggered = false;
 
 function shuffle(arr) {
   const a = [...arr];
@@ -2582,23 +2630,13 @@ function startRealExam() {
   launchExam(qs, 50 * 60, true);
 }
 
-let adaptiveMode = false;
-
-function toggleAdaptive() {
-  adaptiveMode = !adaptiveMode;
-  const toggle = document.getElementById('adaptive-toggle');
-  const knob = document.getElementById('adaptive-knob');
-  toggle.style.background = adaptiveMode ? 'var(--accent)' : 'var(--surface3)';
-  knob.style.left = adaptiveMode ? '23px' : '3px';
-  knob.style.background = adaptiveMode ? 'white' : 'var(--text3)';
-}
 
 function startCustomExam() {
   let pool = getPoolFromSelection(customSelection);
   if (pool.length === 0) { showToast('No hay preguntas para esta selección', 'error'); return; }
   const _stCache = loadStats();
-  // Always use adaptive scoring for coverage; adaptiveMode adds extra difficulty bias
-  pool = weightedShuffle(pool, adaptiveMode ? 0.9 : 0.3, _stCache, 1.0, 'exam');
+  // Always use adaptive scoring for coverage
+  pool = weightedShuffle(pool, 0.9, _stCache, 1.0, 'exam');
   if (customQtyMode === 'custom') pool = pool.slice(0, customQty);
   const timeSec = customTimeMode === 'none' ? 0 : parseInt(document.getElementById('time-range').value) * 60;
   lastExamConfig = { mode: 'personalizado', selection: JSON.parse(JSON.stringify(customSelection)), qtyMode: customQtyMode, qty: customQty, timeMode: customTimeMode, timeSec };
@@ -2616,6 +2654,7 @@ function launchExam(qs, timeSec, penalty) {
   examQuestionTimes = new Array(qs.length).fill(0);
   examQuestionStart = Date.now();
   _examFlagged = new Set();
+  examTimeoutTriggered = false;
   examStartTime = Date.now();
   examTimeLimitSec = timeSec;
   examPenalty = penalty;
@@ -2810,15 +2849,20 @@ function finishExam() {
 
   recordExamStats(examQuestions, examAnswers, note10, elapsed);
 
-  // Show clean splash: only title + one button, no data
-  showConfirm(
-    '¡Examen Finalizado! 🎓',
-    'Tu examen ha sido entregado correctamente.',
-    () => revealResults(note10, scoreColor),
-    'Ver resultados',
-    null,
-    null
-  );
+  // If timeout, skip the confirmation dialog and go directly to results
+  if (examTimeoutTriggered) {
+    revealResults(note10, scoreColor);
+  } else {
+    // Show clean splash: only title + one button, no data
+    showConfirm(
+      '¡Examen Finalizado! 🎓',
+      'Tu examen ha sido entregado correctamente.',
+      () => revealResults(note10, scoreColor),
+      'Ver resultados',
+      null,
+      null
+    );
+  }
 }
 
 function revealResults(note10, scoreColor) {
@@ -2941,7 +2985,18 @@ function startTimer(sec) {
     remaining--;
     updateTimerDisplay(el, remaining);
     if (remaining <= 60) el.classList.add('urgent');
-    if (remaining <= 0) { clearInterval(examTimerInterval); finishExam(); }
+    if (remaining <= 0) {
+      clearInterval(examTimerInterval);
+      examTimeoutTriggered = true;
+      showConfirm(
+        '¡Tiempo!',
+        'Tu tiempo ha terminado. Vamos a comprobar tus respuestas y ver los resultados.',
+        () => finishExam(),
+        'Ver resultados',
+        null,
+        null
+      );
+    }
   }, 1000);
 }
 
@@ -3052,6 +3107,39 @@ function updateStudyConfigCount() {
   const btnNone = document.getElementById('study-sel-none');
   if (btnAll) btnAll.classList.toggle('active', allSelected);
   if (btnNone) btnNone.classList.toggle('active', noneSelected);
+}
+
+// ── Exam config selection helpers ──
+function examSelectAll(selectAll) {
+  const cats = getCategories().filter(cat => getQuestionsByCat(cat).length > 0);
+  cats.forEach(cat => { customSelection[cat] = { selected: selectAll, subcats: null }; });
+  renderSelectionList('custom-sel-list', customSelection, cats, () => updateExamConfigCount());
+  updateExamConfigCount();
+}
+
+function updateExamConfigCount() {
+  const count = getPoolFromSelection(customSelection).length;
+  const info = document.getElementById('exam-config-info');
+  if (info) info.style.display = count > 0 ? '' : 'none';
+  const countEl = document.getElementById('exam-config-count');
+  if (countEl) countEl.textContent = count;
+
+  // Disable start button when nothing selected (same as study config)
+  const btn = document.getElementById('btn-start-exam');
+  if (btn) {
+    btn.disabled = count === 0;
+    btn.style.opacity = count === 0 ? '0.4' : '';
+    btn.style.cursor = count === 0 ? 'not-allowed' : '';
+  }
+
+  // Sync Todas/Ninguna chips
+  const cats = getCategories().filter(cat => getQuestionsByCat(cat).length > 0);
+  const allSel = cats.every(c => customSelection[c]?.selected);
+  const noneSel = cats.every(c => !customSelection[c]?.selected);
+  const btnAll = document.getElementById('exam-sel-all');
+  const btnNone = document.getElementById('exam-sel-none');
+  if (btnAll) btnAll.classList.toggle('active', allSel);
+  if (btnNone) btnNone.classList.toggle('active', noneSel);
 }
 
 function startCustomStudy() {
@@ -4423,9 +4511,10 @@ function recordStudyStats(questions, results) {
   if (st.studyHistory.length > 100) st.studyHistory = st.studyHistory.slice(-100);
 
   const nowTs = Date.now();
-  questions.forEach((q, i) => {
+  results.forEach((result, i) => {
+    const q = questions[i];
     if (!st.questions[q.id]) st.questions[q.id] = { correct: 0, wrong: 0, text: q.question, cat: q.cat, subcat: q.subcat || '' };
-    if (results[i]) st.questions[q.id].correct++;
+    if (result) st.questions[q.id].correct++;
     else st.questions[q.id].wrong++;
     st.questions[q.id].lastSeen = nowTs; // ← spaced repetition timestamp
   });
@@ -5612,13 +5701,14 @@ function initDomCache() {
     'btn-prev','btn-next','btn-finish',
     // Config
     'config-title','config-real','config-personalizado','real-cat-chips',
-    'custom-sel-list','qty-display','time-range','adaptive-toggle','adaptive-knob',
+    'custom-sel-list','qty-display','time-range',
     // Countdown
     'modal-challenge-countdown','countdown-text','countdown-sub',
     // Challenge fail overlay
     'challenge-fail-overlay','challenge-fail-inner','challenge-fail-score','challenge-fail-emoji',
     // Home stats
     'stat-streak','stat-challenge-home','home-last-session','stat-last-score','stat-last-label',
+    'btn-start-exam',
   ];
   ids.forEach(id => {
     const el = document.getElementById(id);
