@@ -987,7 +987,7 @@
 
 <!-- ═══ HOME SCREEN ═══ -->
 <div id="screen-home" class="screen">
-  <button class="back-btn" onclick="goSettings()" style="position:absolute;top:16px;right:16px;width:40px;height:40px;background:var(--surface-b);border-radius:10px;z-index:10;font-size:26px;display:flex;align-items:center;justify-content:center;line-height:1;">
+  <button class="back-btn" onclick="goSettings()" style="position:fixed;top:calc(max(16px, env(safe-area-inset-top)) + 8px);right:16px;width:40px;height:40px;background:var(--surface-b);border-radius:10px;z-index:10;font-size:26px;display:flex;align-items:center;justify-content:center;line-height:1;">
     ⚙️
   </button>
   <div class="logo-area">
@@ -2171,10 +2171,29 @@ let currentScreen = 'screen-setup';
 let currentEditorCat = null;
 
 let _prevScreenTimer = null;
+let _screenListeners = {}; // { screenId: [{ el, event, handler }, ...] }
+
+function registerScreenListener(screenId, el, event, handler) {
+  if (!_screenListeners[screenId]) _screenListeners[screenId] = [];
+  _screenListeners[screenId].push({ el, event, handler });
+}
+
+function cleanupScreenListeners(screenId) {
+  if (!_screenListeners[screenId]) return;
+  _screenListeners[screenId].forEach(({ el, event, handler }) => {
+    if (el && el.removeEventListener) el.removeEventListener(event, handler);
+  });
+  _screenListeners[screenId] = [];
+}
 
 function showScreen(id) {
   // Cancel any pending hide from previous navigation
   if (_prevScreenTimer) { clearTimeout(_prevScreenTimer); _prevScreenTimer = null; }
+
+  // ✅ Cleanup listeners from previous screen
+  if (currentScreen && currentScreen !== id) {
+    cleanupScreenListeners(currentScreen);
+  }
 
   const prev = document.getElementById(currentScreen);
   if (prev && currentScreen !== id) {
@@ -3782,6 +3801,7 @@ function deleteSubcategory(cat, subcat) {
     const st = loadStats();
     removedIds.forEach(id => { delete st.questions[id]; });
     saveStats(st);
+    invalidateQuestionIndex(); // ✅ invalidar caché antes del render, no esperar el timer de saveDB
     saveDB();
     showToast(`Subcategoría "${subcat}" eliminada`, 'success');
     updateHomeStats();
@@ -4196,6 +4216,7 @@ function deleteCategory() {
     const st = loadStats();
     removedIds.forEach(id => { delete st.questions[id]; });
     saveStats(st);
+    invalidateQuestionIndex(); // ✅ invalidar caché antes del render, no esperar el timer de saveDB
     saveDB();
     showToast('Categoría eliminada', 'success');
     updateHomeStats();
@@ -4401,37 +4422,145 @@ function importData(e) {
   const reader = new FileReader();
   reader.onload = ev => {
     try {
-      const data = JSON.parse(ev.target.result);
-      if (data.questions && Array.isArray(data.questions)) {
-        // merge questions
-        const existingIds = new Set(db.questions.map(q => q.id));
-        let added = 0;
-        data.questions.forEach(q => {
-          if (!existingIds.has(q.id)) {
-            db.questions.push(q);
-            added++;
-          }
-        });
-        // sync db.categories with all categories from questions
-        if (!db.categories) db.categories = [];
-        db.questions.forEach(q => {
-          if (q.cat && !db.categories.includes(q.cat)) db.categories.push(q.cat);
-        });
-        saveDB();
-        showToast(`Importadas ${added} pregunta${added===1?'':'s'} nuevas`, 'success');
-        renderEditorHome();
-        updateHomeStats();
-      } else { showToast('Formato de archivo no válido', 'error'); }
-    } catch(e) { showToast('Error al leer el archivo', 'error'); }
+      const content = ev.target.result;
+      let questions = [];
+      
+      // ✅ Detectar si es CSV o JSON
+      if (file.name.endsWith('.csv') || content.trim().startsWith('id,')) {
+        questions = parseCSVQuestions(content);
+      } else {
+        const data = JSON.parse(content);
+        if (data.questions && Array.isArray(data.questions)) {
+          questions = data.questions;
+        } else {
+          showToast('Formato de archivo no válido', 'error');
+          e.target.value = '';
+          return;
+        }
+      }
+      
+      if (questions.length === 0) {
+        showToast('No se encontraron preguntas válidas', 'error');
+        e.target.value = '';
+        return;
+      }
+      
+      // Validar estructura de preguntas
+      const validQuestions = questions.filter(q => {
+        return q.id && q.cat && q.question && q.a && q.b && q.c && q.d && (q.correct !== undefined) && !isNaN(q.correct);
+      });
+      
+      if (validQuestions.length === 0) {
+        showToast('Ninguna pregunta tiene estructura válida', 'error');
+        e.target.value = '';
+        return;
+      }
+      
+      // merge questions
+      const existingIds = new Set(db.questions.map(q => q.id));
+      let added = 0;
+      validQuestions.forEach(q => {
+        if (!existingIds.has(q.id)) {
+          db.questions.push(q);
+          added++;
+        }
+      });
+      
+      if (added === 0) {
+        showToast('Todas las preguntas ya existen', 'info');
+        e.target.value = '';
+        return;
+      }
+      
+      // sync db.categories with all categories from questions
+      if (!db.categories) db.categories = [];
+      db.questions.forEach(q => {
+        if (q.cat && !db.categories.includes(q.cat)) db.categories.push(q.cat);
+      });
+      
+      invalidateQuestionIndex();
+      saveDB();
+      showToast(`Importadas ${added} pregunta${added===1?'':'s'} nuevas`, 'success');
+      renderEditorHome();
+      updateHomeStats();
+    } catch(e) { showToast('Error al leer el archivo: ' + e.message, 'error'); }
   };
   reader.readAsText(file);
   e.target.value = '';
+}
+
+function parseCSVQuestions(csv) {
+  const lines = csv.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+  if (lines.length < 2) return []; // Need header + at least 1 row
+  
+  const header = lines[0].split(',').map(h => h.trim().toLowerCase());
+  const requiredFields = ['id', 'cat', 'question', 'a', 'b', 'c', 'd', 'correct'];
+  const hasAllFields = requiredFields.every(f => header.includes(f));
+  
+  if (!hasAllFields) {
+    showToast('CSV no tiene las columnas requeridas: ' + requiredFields.join(', '), 'error');
+    return [];
+  }
+  
+  const questions = [];
+  for (let i = 1; i < lines.length; i++) {
+    const row = parseCSVRow(lines[i]);
+    if (row.length < header.length) continue; // Skip incomplete rows
+    
+    const q = {};
+    header.forEach((field, idx) => {
+      q[field] = row[idx];
+    });
+    
+    // Normalizar correct a número
+    q.correct = parseInt(q.correct, 10);
+    if (isNaN(q.correct) || q.correct < 0 || q.correct > 3) q.correct = 0;
+    
+    // Asegurar que subcat existe (puede estar vacío)
+    if (!q.subcat) q.subcat = '';
+    
+    questions.push(q);
+  }
+  
+  return questions;
+}
+
+function parseCSVRow(line) {
+  const result = [];
+  let current = '';
+  let insideQuotes = false;
+  
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const nextChar = line[i + 1];
+    
+    if (char === '"') {
+      if (insideQuotes && nextChar === '"') {
+        // Escaped quote
+        current += '"';
+        i++;
+      } else {
+        // Toggle quote state
+        insideQuotes = !insideQuotes;
+      }
+    } else if (char === ',' && !insideQuotes) {
+      // Field separator
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  
+  result.push(current.trim());
+  return result;
 }
 
 function clearAllData() {
   closeModal('modal-ie');
   showConfirm('¿Borrar todos los datos?', 'Se eliminarán todas las preguntas. Esta acción no se puede deshacer.', () => {
     db = { questions: [] };
+    invalidateQuestionIndex();
     saveDB();
     showToast('Datos eliminados', 'success');
     renderEditorHome();
@@ -4449,9 +4578,22 @@ function openModal(id) {
 }
 
 function closeModal(id) {
+  // iOS: desenfoca el input activo para que el teclado se cierre ANTES de
+  // cualquier cambio de layout. Si no hacemos esto, el teclado queda abierto
+  // y iOS introduce un window.scrollY que desplaza el bottom-nav.
+  if (document.activeElement && document.activeElement !== document.body) {
+    document.activeElement.blur();
+  }
   const m = document.getElementById(id);
   m.classList.remove('open');
   document.body.style.overflow = '';
+  // Resetear scroll del window que iOS pudo haber introducido al enfocar
+  // el input (incluso cuando body tiene overflow:hidden)
+  requestAnimationFrame(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  });
 }
 
 function showConfirm(title, msg, onOk, okLabel, onCancel, cancelLabel) {
@@ -5852,6 +5994,26 @@ document.addEventListener('touchstart', function(e) {
 // ══════════════════════════════════════════════
 //  PWA INSTALL PROMPT
 // ══════════════════════════════════════════════
+
+// ── iOS Visual Viewport: resetear layout cuando el teclado se cierra ──────
+// En iOS Safari, cuando el teclado aparece/desaparece, window.scrollY puede
+// quedar corrompido. Escuchamos el resize del visualViewport para corregirlo.
+if (window.visualViewport) {
+  let _lastVVHeight = window.visualViewport.height;
+  window.visualViewport.addEventListener('resize', () => {
+    const h = window.visualViewport.height;
+    if (h > _lastVVHeight + 50) {
+      // El teclado se acaba de cerrar: resetear cualquier scroll drift
+      requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+      });
+    }
+    _lastVVHeight = h;
+  });
+}
+
 let _deferredPrompt = null;
 const PWA_DISMISSED_KEY = 'aprendix_pwa_dismissed';
 
