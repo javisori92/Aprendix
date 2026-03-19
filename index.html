@@ -1337,6 +1337,16 @@
 
   <!-- PERSONALIZADO MODE -->
   <div id="config-personalizado" style="display:none">
+
+    <!-- Select all / none toggle — igual que en Estudio personalizado -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <span style="font-size:13px;color:var(--text2);">Categorías seleccionadas</span>
+      <div style="display:flex;gap:8px;">
+        <button class="sort-chip" id="exam-sel-none" onclick="examSelectAll(false)">Ninguna</button>
+        <button class="sort-chip" id="exam-sel-all" onclick="examSelectAll(true)">Todas</button>
+      </div>
+    </div>
+
     <div id="custom-sel-list"></div>
 
     <div class="section-title">Cantidad de preguntas</div>
@@ -2395,10 +2405,11 @@ function goExamConfig(mode) {
       return;
     }
     selectedRealCat = realCats[0];
-    renderChips('real-cat-chips', realCats, [selectedRealCat], true, cat => {
+    const onRealCatChip = cat => {
       selectedRealCat = cat;
-      renderChips('real-cat-chips', realCats, [cat], true, arguments.callee);
-    });
+      renderChips('real-cat-chips', realCats, [cat], true, onRealCatChip);
+    };
+    renderChips('real-cat-chips', realCats, [selectedRealCat], true, onRealCatChip);
   } else {
     customSelection = {};
     // Start with NONE selected — same as study config
@@ -2482,15 +2493,20 @@ function renderSelectionList(containerId, sel, cats, onChange) {
             `;
             subRow.onclick = (e) => {
               e.stopPropagation();
+              const wasIn = sel[cat].subcats === null || sel[cat].subcats.includes(s);
               if (sel[cat].subcats === null) sel[cat].subcats = [...groups];
               if (sel[cat].subcats.includes(s)) {
                 if (sel[cat].subcats.length > 1) sel[cat].subcats = sel[cat].subcats.filter(x => x !== s);
+                else return; // ✅ bloquear: no se puede deseleccionar la última, no cambiar UI
               } else {
                 sel[cat].subcats.push(s);
                 if (sel[cat].subcats.length === groups.length) sel[cat].subcats = null;
               }
-              subRow.classList.toggle('on');
-              subRow.querySelector('.sel-subcat-toggle').classList.toggle('on');
+              const isNowIn = sel[cat].subcats === null || sel[cat].subcats.includes(s);
+              if (wasIn !== isNowIn) {
+                subRow.classList.toggle('on');
+                subRow.querySelector('.sel-subcat-toggle').classList.toggle('on');
+              }
               if (onChange) onChange();
             };
             subcatList.appendChild(subRow);
@@ -2524,15 +2540,20 @@ function renderSelectionList(containerId, sel, cats, onChange) {
         `;
         subRow.onclick = (e) => {
           e.stopPropagation();
+          const wasIn = sel[cat].subcats === null || sel[cat].subcats.includes(s);
           if (sel[cat].subcats === null) sel[cat].subcats = [...groups];
           if (sel[cat].subcats.includes(s)) {
             if (sel[cat].subcats.length > 1) sel[cat].subcats = sel[cat].subcats.filter(x => x !== s);
+            else return; // ✅ bloquear: no se puede deseleccionar la última, no cambiar UI
           } else {
             sel[cat].subcats.push(s);
             if (sel[cat].subcats.length === groups.length) sel[cat].subcats = null;
           }
-          subRow.classList.toggle('on');
-          subRow.querySelector('.sel-subcat-toggle').classList.toggle('on');
+          const isNowIn = sel[cat].subcats === null || sel[cat].subcats.includes(s);
+          if (wasIn !== isNowIn) {
+            subRow.classList.toggle('on');
+            subRow.querySelector('.sel-subcat-toggle').classList.toggle('on');
+          }
           if (onChange) onChange();
         };
         subcatList.appendChild(subRow);
@@ -2800,9 +2821,9 @@ function renderExamQuestion() {
   const total = examQuestions.length;
   const isLast = examIndex === total - 1;
 
-  const subcatBadge = q.subcat ? `<span class="badge" style="background:rgba(110,255,184,.1);color:var(--accent3);margin-left:4px;">${q.subcat}</span>` : '';
+  const subcatBadge = q.subcat ? `<span class="badge" style="background:rgba(110,255,184,.1);color:var(--accent3);margin-left:4px;">${esc(q.subcat)}</span>` : '';
   DOM['exam-q-num'].innerHTML =
-    `<span>Pregunta ${examIndex+1}</span><span class="badge badge-accent">${q.cat}</span>${subcatBadge}`;
+    `<span>Pregunta ${examIndex+1}</span><span class="badge badge-accent">${esc(q.cat)}</span>${subcatBadge}`;
   DOM['exam-q-text'].textContent = q.question;
   DOM['exam-counter'].textContent = `${examIndex+1}/${total}`;
   DOM['exam-progress'].style.width = `${((examIndex + 1)/total)*100}%`;
@@ -3158,6 +3179,8 @@ let studyAnswered = false;
 let studyWrong = [];
 let studyPhase = 'all'; // 'all' | 'review'
 let studyResults = []; // tracks true/false per answer in 'all' phase
+let studyReviewQueue = []; // preguntas de la ronda de repaso actual
+let studyReviewResults = []; // respuestas de la ronda de repaso actual
 let studySelection = {}; // { cat: { selected, subcats: null|[...] } }
 
 function goStudyConfig() {
@@ -3291,9 +3314,9 @@ function renderStudyQuestion() {
   studyAnswered = false;
   const q = studyQueue[studyIndex];
   const total = studyQueue.length;
-  const subcatBadge = q.subcat ? `<span class="badge" style="background:rgba(110,255,184,.1);color:var(--accent3);margin-left:4px;">${q.subcat}</span>` : '';
+  const subcatBadge = q.subcat ? `<span class="badge" style="background:rgba(110,255,184,.1);color:var(--accent3);margin-left:4px;">${esc(q.subcat)}</span>` : '';
   DOM['study-q-num'].innerHTML =
-    `<span>Pregunta ${studyIndex+1}/${total}</span><span class="badge badge-accent">${q.cat}</span>${subcatBadge}`;
+    `<span>Pregunta ${studyIndex+1}/${total}</span><span class="badge badge-accent">${esc(q.cat)}</span>${subcatBadge}`;
   DOM['study-q-text'].textContent = q.question;
   DOM['study-progress'].style.width = `${(studyIndex/total)*100}%`;
   DOM['study-counter'].textContent = `${studyIndex+1}/${total}`;
@@ -3334,6 +3357,7 @@ function studyAnswer(i) {
   });
   const isCorrect = i === correct;
   if (studyPhase === 'all') studyResults.push(isCorrect);
+    else if (studyPhase === 'review') studyReviewResults.push(isCorrect);
   const fb = DOM['study-feedback'];
   if (isCorrect) {
     fb.textContent = '✓ ¡Correcto!';
@@ -3377,6 +3401,22 @@ function studyNext() {
           `Aún quedan ${studyWrong.length} pregunta${studyWrong.length===1?'':'s'} sin responder correctamente. ¿Seguir repasando?`,
           () => { startStudyReview(); },
           'Seguir repasando',
+              } else {
+                // Registrar stats de la ronda de repaso terminada (solo las que se contestaron)
+                recordReviewRoundStats(studyReviewQueue, studyReviewResults);
+                if (studyWrong.length === 0) {
+                  showStudyResults(true);
+                } else {
+                  showConfirm(
+                    'Repaso completado',
+                    `Aún quedan ${studyWrong.length} pregunta${studyWrong.length===1?'':'s'} sin responder correctamente. ¿Seguir repasando?`,
+                    () => { startStudyReview(); },
+                    'Seguir repasando',
+                    () => showStudyResults(false),
+                    'Ver resultados'
+                  );
+                }
+              }
           () => showStudyResults(false),
           'Ver resultados'
         );
@@ -3388,14 +3428,15 @@ function studyNext() {
 }
 
 function confirmExitStudy() {
-  const answered = studyResults.length;
-  if (answered === 0) { goHome(); return; }
+  const answered = studyPhase === 'review' ? studyReviewResults.length : studyResults.length;
+  if (answered === 0 && studyResults.length === 0) { goHome(); return; }
   showConfirm(
     '¿Salir del modo estudio?',
     `Llevas ${answered} pregunta${answered===1?'':'s'} respondida${answered===1?'':'s'}. ¿Quieres guardar tu progreso?`,
     () => {
       // Save progress and show results
       if (studyPhase === 'all') recordStudyStats(studyQueue, studyResults);
+      if (studyPhase === 'review') recordReviewRoundStats(studyReviewQueue, studyReviewResults);
       showStudyResults(false);
     },
     'Guardar y ver resumen',
@@ -3410,43 +3451,32 @@ function showStudyResults(perfect) {
   const total = studyResults.length;
   const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
 
-  // Best streak
-  let streak = 0, best = 0;
-  studyResults.forEach(r => { if (r) { streak++; best = Math.max(best, streak); } else streak = 0; });
-
-  document.getElementById('study-res-icon').textContent = perfect ? '🏆' : pct >= 70 ? '🎓' : pct >= 50 ? '📚' : '💪';
-  document.getElementById('study-res-pct').textContent = `${pct}%`;
-  document.getElementById('study-res-label').textContent = perfect ? '¡Sesión perfecta!' : 'Precisión en esta sesión';
-  document.getElementById('study-res-correct').textContent = correct;
-  document.getElementById('study-res-wrong').textContent = wrong;
-  document.getElementById('study-res-total').textContent = total;
-  document.getElementById('study-res-streak').textContent = best;
-
-  // Wrong questions list (max 5)
-  const wrongListEl = document.getElementById('study-res-wrong-list');
-  const phaseWrong = studyWrong.length > 0 ? studyWrong : [];
-  if (phaseWrong.length === 0) {
-    document.getElementById('study-res-phase-card').style.display = 'none';
-  } else {
-    document.getElementById('study-res-phase-card').style.display = '';
-    wrongListEl.innerHTML = phaseWrong.slice(0, 5).map((q, i) =>
-      `<div style="padding:4px 0;border-bottom:1px solid var(--border);color:var(--text2);">${i+1}. ${esc(q.question.length > 80 ? q.question.slice(0,80)+'…' : q.question)}</div>`
-    ).join('') + (phaseWrong.length > 5 ? `<div style="font-size:11px;color:var(--text3);margin-top:6px;">…y ${phaseWrong.length - 5} más</div>` : '');
-  }
-
-  showScreen('screen-study-result');
-}
-
-function studyFinished() {
-  showStudyResults(true);
-}
+    } else {
+      // Registrar stats de la ronda de repaso terminada (solo las preguntas contestadas)
+      recordReviewRoundStats(studyReviewQueue, studyReviewResults);
+      if (studyWrong.length === 0) {
+        showStudyResults(true);
+      } else {
+        showConfirm(
+          'Repaso completado',
+          `Aún quedan ${studyWrong.length} pregunta${studyWrong.length===1?'':'s'} sin responder correctamente. ¿Seguir repasando?`,
+          () => { startStudyReview(); },
+          'Seguir repasando',
+          () => showStudyResults(false),
+          'Ver resultados'
+        );
+      }
+    }
 
 function startStudyReview() {
   // studyWrong contains questions with original a/b/c/d fields intact
-  studyQueue = shuffle(studyWrong).map(q => {
+  const wrongNow = studyWrong;
+  studyQueue = shuffle(wrongNow).map(q => {
     const shuffled = shuffleOpts(q);
     return { ...q, opts: shuffled };
   });
+  studyReviewQueue = [...wrongNow]; // guardar cola original de la ronda
+  studyReviewResults = []; // resetear resultados de esta ronda
   studyIndex = 0;
   studyWrong = [];
   DOM['study-mode-badge'].textContent = 'Modo estudio — Repaso de falladas';
@@ -4092,7 +4122,7 @@ function renderQItem(list, q, letters, showSubcat, statsCache) {
     statsHtml = `<span style="font-size:10px;color:${color};font-family:'JetBrains Mono',monospace;">${pct}% (${total})</span>`;
   }
   const subcatTag = showSubcat && q.subcat
-    ? `<span style="font-size:10px;color:var(--accent3);margin-left:6px;padding:1px 6px;border-radius:4px;background:rgba(110,255,184,.1);">${q.subcat}</span>`
+    ? `<span style="font-size:10px;color:var(--accent3);margin-left:6px;padding:1px 6px;border-radius:4px;background:rgba(110,255,184,.1);">${esc(q.subcat)}</span>`
     : '';
   const item = document.createElement('div');
   item.className = 'q-editor-item';
@@ -4139,6 +4169,7 @@ function saveNewCategory() {
       db.subcategories[name] = db.subcategories[oldCat];
       delete db.subcategories[oldCat];
     }
+    invalidateQuestionIndex();
     saveDB();
     closeModal('modal-newcat');
     currentEditorCat = name;
@@ -4160,6 +4191,7 @@ function saveNewCategory() {
       const si = db.subcategories[cat].indexOf(oldSubcat);
       if (si >= 0) db.subcategories[cat][si] = name;
     }
+    invalidateQuestionIndex();
     saveDB();
     closeModal('modal-newcat');
     currentEditorSubcat = name;
@@ -4175,6 +4207,7 @@ function saveNewCategory() {
     if (getSubcats(cat).includes(name)) { showToast('Esa subcategoría ya existe', 'error'); return; }
     // Register subcategory persistently (even before questions are added)
     registerSubcat(cat, name);
+    invalidateQuestionIndex();
     saveDB();
     closeModal('modal-newcat');
     input.dataset.mode = '';
@@ -4190,6 +4223,7 @@ function saveNewCategory() {
     if (getCategories().includes(name)) { showToast('Esa categoría ya existe', 'error'); return; }
     if (!db.categories) db.categories = [];
     db.categories.push(name);
+    invalidateQuestionIndex();
     saveDB();
     closeModal('modal-newcat');
     currentEditorCat = name;
@@ -4348,6 +4382,7 @@ function saveQuestion() {
   if (!db.categories) db.categories = [];
   if (!db.categories.includes(cat)) db.categories.push(cat);
   if (subcat) registerSubcat(cat, subcat);
+  invalidateQuestionIndex();
   saveDB();
   closeModal('modal-question');
   showToast('Pregunta guardada', 'success');
@@ -4372,6 +4407,7 @@ function saveQuestion() {
 function deleteQuestion(id) {
   showConfirm('¿Eliminar pregunta?', 'Esta acción no se puede deshacer.', () => {
     db.questions = db.questions.filter(q => q.id !== id);
+    invalidateQuestionIndex();
     saveDB();
     const st = loadStats();
     if (st.questions[id]) { delete st.questions[id]; saveStats(st); }
@@ -4490,6 +4526,7 @@ function importData(e) {
 }
 
 function parseCSVQuestions(csv) {
+  csv = csv.replace(/^\uFEFF/, ''); // eliminar BOM UTF-8 (Excel/Word en Windows)
   const lines = csv.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));
   if (lines.length < 2) return []; // Need header + at least 1 row
   
@@ -4587,13 +4624,21 @@ function closeModal(id) {
   const m = document.getElementById(id);
   m.classList.remove('open');
   document.body.style.overflow = '';
-  // Resetear scroll del window que iOS pudo haber introducido al enfocar
-  // el input (incluso cuando body tiene overflow:hidden)
-  requestAnimationFrame(() => {
+  // iOS puede restaurar el viewport en dos fases al cerrar teclado.
+  // Hacemos una corrección inmediata y otra diferida para asegurar
+  // que la bottom-nav vuelva a su posición original.
+  const restoreViewport = () => {
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
-  });
+    const nav = DOM['bottom-nav'] || document.getElementById('bottom-nav');
+    if (nav) {
+      nav.style.transform = 'translateZ(0)';
+      requestAnimationFrame(() => { nav.style.transform = ''; });
+    }
+  };
+  requestAnimationFrame(restoreViewport);
+  setTimeout(restoreViewport, 260);
 }
 
 function showConfirm(title, msg, onOk, okLabel, onCancel, cancelLabel) {
@@ -4735,7 +4780,7 @@ function recordStudyStats(questions, results) {
   const wrong = results.length - correct;
   const total = results.length;
   const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
-  const cats = [...new Set(questions.map(q => q.cat).filter(Boolean))];
+  const cats = [...new Set(questions.slice(0, results.length).map(q => q.cat).filter(Boolean))];
 
   if (!st.studyHistory) st.studyHistory = [];
   st.studyHistory.push({
@@ -4816,7 +4861,7 @@ function importStatsFile(e) {
       } else {
         showToast('Archivo de estadísticas no válido', 'error');
       }
-    } catch(err) { showToast('Error al leer el archivo', 'error'); }
+    } catch(err) { showToast('Error al leer el archivo', 'error'); e.target.value = ''; }
   };
   reader.readAsText(file);
   e.target.value = '';
@@ -5107,7 +5152,7 @@ function renderStats() {
         subcatHTML += `
           <div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-              <span style="font-size:11px;color:var(--text2);padding-left:8px;border-left:2px solid ${sc};">${label}</span>
+              <span style="font-size:11px;color:var(--text2);padding-left:8px;border-left:2px solid ${sc};">${esc(label)}</span>
               <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:${sc};">${sp}% · ${sd.correct}✓ ${sd.wrong}✗</span>
             </div>
             <div style="height:3px;background:var(--surface3);border-radius:2px;margin-left:8px;">
@@ -5123,7 +5168,7 @@ function renderStats() {
     div.style.padding = '12px 14px';
     div.innerHTML = `
       <div class="stat-bar-header">
-        <span class="stat-bar-name">${cat}</span>
+        <span class="stat-bar-name">${esc(cat)}</span>
         <span class="stat-bar-pct" style="color:${color}">${p}%</span>
       </div>
       <div class="stat-bar-track">
@@ -5161,8 +5206,8 @@ function renderStats() {
     div.innerHTML = `
       <div class="stat-q-text">${esc(q.text)}</div>
       <div class="stat-q-meta">
-        <span class="badge badge-accent">${q.cat}</span>
-        ${q.subcat ? `<span class="badge" style="background:rgba(110,255,184,.1);color:var(--accent3);">${q.subcat}</span>` : ''}
+        <span class="badge badge-accent">${esc(q.cat)}</span>
+        ${q.subcat ? `<span class="badge" style="background:rgba(110,255,184,.1);color:var(--accent3);">${esc(q.subcat)}</span>` : ''}
         <span class="badge badge-danger">${failPct}% fallos</span>
         <span style="font-size:11px;color:var(--text3);margin-left:auto;">${q.wrong}✗ / ${q.correct}✓</span>
       </div>
@@ -5192,8 +5237,8 @@ function renderStats() {
     div.innerHTML = `
       <div class="stat-q-text">${esc(q.text)}</div>
       <div class="stat-q-meta">
-        <span class="badge badge-accent">${q.cat}</span>
-        ${q.subcat ? `<span class="badge" style="background:rgba(110,255,184,.1);color:var(--accent3);">${q.subcat}</span>` : ''}
+        <span class="badge badge-accent">${esc(q.cat)}</span>
+        ${q.subcat ? `<span class="badge" style="background:rgba(110,255,184,.1);color:var(--accent3);">${esc(q.subcat)}</span>` : ''}
         <span class="badge badge-success">${okPct}% aciertos</span>
         <span style="font-size:11px;color:var(--text3);margin-left:auto;">${q.correct}✓ / ${q.wrong}✗</span>
       </div>
@@ -5312,8 +5357,8 @@ function renderChallengeQuestion() {
   counterEl.style.color = challengeScore >= record && record > 0 ? 'var(--accent4)' : inDangerZone ? 'var(--warning)' : 'var(--danger)';
 
   DOM['challenge-q-num'].innerHTML =
-    `<span>Pregunta ${challengeScore + 1}</span><span class="badge badge-accent">${q.cat}</span>` +
-    (q.subcat ? `<span class="badge" style="background:rgba(110,255,184,.1);color:var(--accent3);margin-left:4px;">${q.subcat}</span>` : '') +
+    `<span>Pregunta ${challengeScore + 1}</span><span class="badge badge-accent">${esc(q.cat)}</span>` +
+    (q.subcat ? `<span class="badge" style="background:rgba(110,255,184,.1);color:var(--accent3);margin-left:4px;">${esc(q.subcat)}</span>` : '') +
     (inDangerZone && record > 0 ? `<span class="badge" style="background:rgba(255,217,110,.15);color:var(--accent4);margin-left:4px;">🔥 ${challengeScore >= record ? '¡Récord!' : 'Zona peligrosa'}</span>` : '');
   DOM['challenge-q-text'].textContent = q.question;
 
@@ -5416,9 +5461,26 @@ function finishChallenge(failedQ) {
   st.challengeRuns = (st.challengeRuns || 0) + 1;
   if (isNewRecord) st.challengeRecord = challengeScore;
   saveStats(st);
+}
 
-  document.getElementById('ch-res-score').textContent = challengeScore;
-  document.getElementById('ch-res-record').textContent = isNewRecord ? challengeScore : prevRecord;
+function recordReviewRoundStats(queue, results) {
+  // Actualiza contadores por pregunta para las preguntas repasadas en esta ronda.
+  // NO incrementa studySessions ni crea nueva entrada en studyHistory.
+  if (!queue || !results || results.length === 0) return;
+  const st = loadStats();
+  const nowTs = Date.now();
+  results.forEach((result, i) => {
+    const q = queue[i];
+    if (!q) return;
+    if (!st.questions[q.id]) st.questions[q.id] = { correct: 0, wrong: 0, text: q.question, cat: q.cat, subcat: q.subcat || '' };
+    if (result) st.questions[q.id].correct++;
+    else st.questions[q.id].wrong++;
+    st.questions[q.id].lastSeen = nowTs;
+  });
+  saveStats(st);
+}
+
+// ── EXAM ──────────────────────────────────────────────────────────────
   document.getElementById('ch-res-icon').textContent = challengeScore === 0 ? '😬' : challengeScore < 5 ? '😅' : challengeScore < 15 ? '💪' : challengeScore < 30 ? '🔥' : '👑';
 
   if (isNewRecord && challengeScore > 0) {
@@ -5834,6 +5896,7 @@ function importFromText() {
     if (!db.subcategories[cat].includes(subcat)) db.subcategories[cat].push(subcat);
   }
 
+  invalidateQuestionIndex();
   saveDB();
   closeModal('modal-import-text');
   showToast(`${toAdd.length} pregunta${toAdd.length===1?'':'s'} importada${toAdd.length===1?'':'s'}${subcat ? ` en "${subcat}"` : ''}`, 'success');
