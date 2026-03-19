@@ -1676,6 +1676,9 @@
       Borrar
     </button>
   </div>
+  <p style="font-size:12px;color:var(--text3);margin:-8px 0 14px;line-height:1.5;">
+    Al pulsar <strong>Importar</strong> podrás elegir entre: sumar contadores, reemplazar estadísticas o fusionar historiales.
+  </p>
   <button class="btn btn-secondary" onclick="openCoverage()" style="margin-bottom:16px;font-size:12px;padding:10px 8px;">
     📊 Cobertura por categoría
   </button>
@@ -2013,6 +2016,27 @@
       <button class="btn btn-secondary" onclick="closeModal('modal-confirm')">Cancelar</button>
       <button class="btn btn-danger" id="confirm-ok">Confirmar</button>
     </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: STATS IMPORT MODE ═══ -->
+<div class="modal-overlay" id="modal-stats-import-mode">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Importar estadísticas</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6;">
+      Elige cómo aplicar el archivo de estadísticas.
+    </p>
+    <button class="btn btn-primary" onclick="chooseStatsImportMode('aggregate')" style="margin-bottom:10px;">
+      Solo contadores agregados
+    </button>
+    <button class="btn btn-secondary" onclick="chooseStatsImportMode('replace')" style="margin-bottom:10px;">
+      Reemplazar estadísticas completas
+    </button>
+    <button class="btn btn-secondary" onclick="chooseStatsImportMode('merge-history')" style="margin-bottom:10px;">
+      Fusionar también historiales
+    </button>
+    <button class="btn btn-secondary" onclick="closeModal('modal-stats-import-mode')">Cancelar</button>
   </div>
 </div>
 
@@ -3414,8 +3438,8 @@ function studyNext() {
 }
 
 function confirmExitStudy() {
-  const answered = studyPhase === 'review' ? studyReviewResults.length : studyResults.length;
-  if (answered === 0 && studyResults.length === 0) { goHome(); return; }
+  const answered = studyResults.length + (studyPhase === 'review' ? studyReviewResults.length : 0);
+  if (answered === 0) { goHome(); return; }
   showConfirm(
     '¿Salir del modo estudio?',
     `Llevas ${answered} pregunta${answered===1?'':'s'} respondida${answered===1?'':'s'}. ¿Quieres guardar tu progreso?`,
@@ -3457,7 +3481,7 @@ function showStudyResults(perfect) {
   const icon = perfect || pct >= 90 ? '🏆' : pct >= 70 ? '🎓' : pct >= 50 ? '📘' : '💪';
   DOM['study-res-icon'].textContent = icon;
   DOM['study-res-label'].textContent =
-    studyPhase === 'review' ? 'Resultado acumulado tras repaso' : 'Precisión en esta sesión';
+    studyPhase === 'review' ? 'Precisión en ronda inicial' : 'Precisión en esta sesión';
 
   const phaseCard = DOM['study-res-phase-card'];
   const wrongList = DOM['study-res-wrong-list'];
@@ -3480,11 +3504,12 @@ function showStudyResults(perfect) {
 function startStudyReview() {
   // studyWrong contains questions with original a/b/c/d fields intact
   const wrongNow = studyWrong;
-  studyQueue = shuffle(wrongNow).map(q => {
+  const wrongShuffled = shuffle([...wrongNow]);
+  studyQueue = wrongShuffled.map(q => {
     const shuffled = shuffleOpts(q);
     return { ...q, opts: shuffled };
   });
-  studyReviewQueue = [...wrongNow]; // guardar cola original de la ronda
+  studyReviewQueue = [...wrongShuffled]; // mismo orden que studyQueue para mapear resultados
   studyReviewResults = []; // resetear resultados de esta ronda
   studyIndex = 0;
   studyWrong = [];
@@ -4697,7 +4722,9 @@ function loadStats() {
   try {
     const raw = localStorage.getItem(STATS_KEY);
     if (raw) return JSON.parse(raw);
-  } catch(e) {}
+  } catch(e) {
+    console.warn('No se pudieron cargar estadísticas:', e);
+  }
   return {
     examsCompleted: 0,
     studySessions: 0,
@@ -4710,7 +4737,9 @@ function loadStats() {
 }
 
 function saveStats(st) {
-  try { localStorage.setItem(STATS_KEY, JSON.stringify(st)); } catch(e) {}
+  try { localStorage.setItem(STATS_KEY, JSON.stringify(st)); } catch(e) {
+    console.warn('No se pudieron guardar estadísticas:', e);
+  }
 }
 
 function recordExamStats(questions, answers, note10, elapsed) {
@@ -4825,7 +4854,32 @@ function exportStats() {
 }
 
 function importStats() {
-  document.getElementById('import-stats-file').click();
+  openModal('modal-stats-import-mode');
+}
+
+let _statsImportMode = 'aggregate';
+
+function chooseStatsImportMode(mode) {
+  _statsImportMode = mode || 'aggregate';
+  closeModal('modal-stats-import-mode');
+  const input = document.getElementById('import-stats-file');
+  if (input) input.click();
+}
+
+function _normalizeStats(raw) {
+  const r = (raw && typeof raw === 'object') ? raw : {};
+  return {
+    examsCompleted: Number(r.examsCompleted) || 0,
+    studySessions: Number(r.studySessions) || 0,
+    bestScore10: r.bestScore10 === null || r.bestScore10 === undefined ? null : Number(r.bestScore10) || 0,
+    bestStreak: Number(r.bestStreak) || 0,
+    challengeRecord: Number(r.challengeRecord) || 0,
+    challengeRuns: Number(r.challengeRuns) || 0,
+    questions: (r.questions && typeof r.questions === 'object') ? r.questions : {},
+    examHistory: Array.isArray(r.examHistory) ? r.examHistory : [],
+    studyHistory: Array.isArray(r.studyHistory) ? r.studyHistory : [],
+    activityDays: Array.isArray(r.activityDays) ? r.activityDays : []
+  };
 }
 
 function importStatsFile(e) {
@@ -4835,37 +4889,62 @@ function importStatsFile(e) {
   reader.onload = ev => {
     try {
       const data = JSON.parse(ev.target.result);
+      const mode = _statsImportMode || 'aggregate';
+      _statsImportMode = 'aggregate';
       // Validate it looks like stats data
       if (typeof data === 'object' && (data.questions !== undefined || data.examsCompleted !== undefined)) {
-        // Merge: keep higher values for records, combine question counts
-        const current = loadStats();
+        const current = _normalizeStats(loadStats());
+        const incoming = _normalizeStats(data);
+
+        if (mode === 'replace') {
+          saveStats(incoming);
+          showToast('Estadísticas reemplazadas correctamente', 'success');
+          renderStats();
+          return;
+        }
+
+        // Modo agregado por defecto: suma contadores y métricas por pregunta.
         const merged = {
-          examsCompleted: (current.examsCompleted || 0) + (data.examsCompleted || 0),
-          studySessions: (current.studySessions || 0) + (data.studySessions || 0),
-          bestScore10: Math.max(current.bestScore10 || 0, data.bestScore10 || 0) || null,
-          bestStreak: Math.max(current.bestStreak || 0, data.bestStreak || 0),
-          challengeRecord: Math.max(current.challengeRecord || 0, data.challengeRecord || 0),
-          challengeRuns: (current.challengeRuns || 0) + (data.challengeRuns || 0),
+          ...current,
+          examsCompleted: current.examsCompleted + incoming.examsCompleted,
+          studySessions: current.studySessions + incoming.studySessions,
+          bestScore10: Math.max(current.bestScore10 || 0, incoming.bestScore10 || 0) || null,
+          bestStreak: Math.max(current.bestStreak || 0, incoming.bestStreak || 0),
+          challengeRecord: Math.max(current.challengeRecord || 0, incoming.challengeRecord || 0),
+          challengeRuns: current.challengeRuns + incoming.challengeRuns,
           questions: { ...current.questions }
         };
-        // Merge question stats
-        if (data.questions) {
-          Object.entries(data.questions).forEach(([id, q]) => {
-            if (merged.questions[id]) {
-              merged.questions[id].correct += q.correct || 0;
-              merged.questions[id].wrong += q.wrong || 0;
-            } else {
-              merged.questions[id] = { ...q };
-            }
-          });
+
+        Object.entries(incoming.questions).forEach(([id, q]) => {
+          if (merged.questions[id]) {
+            merged.questions[id].correct += q.correct || 0;
+            merged.questions[id].wrong += q.wrong || 0;
+            if (!merged.questions[id].text && q.text) merged.questions[id].text = q.text;
+            if (!merged.questions[id].cat && q.cat) merged.questions[id].cat = q.cat;
+            if (!merged.questions[id].subcat && q.subcat) merged.questions[id].subcat = q.subcat;
+            merged.questions[id].lastSeen = Math.max(merged.questions[id].lastSeen || 0, q.lastSeen || 0);
+          } else {
+            merged.questions[id] = { ...q };
+          }
+        });
+
+        if (mode === 'merge-history') {
+          merged.examHistory = [...(current.examHistory || []), ...(incoming.examHistory || [])].slice(-50);
+          merged.studyHistory = [...(current.studyHistory || []), ...(incoming.studyHistory || [])].slice(-100);
+          merged.activityDays = [...new Set([...(current.activityDays || []), ...(incoming.activityDays || [])])].sort();
         }
+
         saveStats(merged);
         showToast('Estadísticas importadas correctamente', 'success');
         renderStats();
       } else {
         showToast('Archivo de estadísticas no válido', 'error');
       }
-    } catch(err) { showToast('Error al leer el archivo', 'error'); e.target.value = ''; }
+    } catch(err) {
+      console.warn('Error importando estadísticas:', err);
+      showToast('Error al leer el archivo', 'error');
+      e.target.value = '';
+    }
   };
   reader.readAsText(file);
   e.target.value = '';
@@ -5075,7 +5154,8 @@ function goStudyHistory() {
 
 function renderStats() {
   const st = loadStats();
-  const hasData = st.examsCompleted > 0 || st.studySessions > 0 || st.challengeRuns > 0;
+  const hasQuestionStats = st.questions && Object.keys(st.questions).length > 0;
+  const hasData = st.examsCompleted > 0 || st.studySessions > 0 || st.challengeRuns > 0 || hasQuestionStats;
   document.getElementById('stats-empty').style.display = hasData ? 'none' : 'block';
   document.getElementById('stats-content').style.display = hasData ? 'block' : 'none';
   if (!hasData) return;
@@ -5465,6 +5545,11 @@ function finishChallenge(failedQ) {
   st.challengeRuns = (st.challengeRuns || 0) + 1;
   if (isNewRecord) st.challengeRecord = challengeScore;
   saveStats(st);
+
+  // Populate result header metrics
+  document.getElementById('ch-res-score').textContent = challengeScore;
+  document.getElementById('ch-res-record').textContent = st.challengeRecord || 0;
+
   document.getElementById('ch-res-icon').textContent = challengeScore === 0 ? '😬' : challengeScore < 5 ? '😅' : challengeScore < 15 ? '💪' : challengeScore < 30 ? '🔥' : '👑';
 
   if (isNewRecord && challengeScore > 0) {
