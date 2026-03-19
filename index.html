@@ -90,7 +90,11 @@
     flex-direction: column;
     overflow: hidden;
     font-size: 15px;
-    height: 100dvh;
+    /* --app-height is set by JS on every load/resize/pageshow to always
+       reflect the true window.innerHeight in iOS PWA standalone mode.
+       Fallback to 100dvh for non-JS / first paint. */
+    height: var(--app-height, 100dvh);
+    max-height: var(--app-height, 100dvh);
     overscroll-behavior: none;
   }
 
@@ -6499,19 +6503,55 @@ document.addEventListener('touchstart', function(e) {
 //  PWA INSTALL PROMPT
 // ══════════════════════════════════════════════
 
-// ── iOS Visual Viewport: resetear layout cuando el teclado se cierra ──────
-// En iOS Safari, cuando el teclado aparece/desaparece, window.scrollY puede
-// quedar corrompido. Escuchamos el resize del visualViewport para corregirlo.
+// ── iOS PWA viewport fix ─────────────────────────────────────────────────
+// En iOS standalone (PWA), window.scrollY puede quedar con un valor distinto
+// de 0 al reabrir la app por segunda vez, desplazando el bottom-nav hacia
+// arriba. La solución es:
+//  1. Usar --app-height = window.innerHeight en lugar de 100dvh.
+//  2. Forzar window.scrollTo(0,0) en cada 'pageshow' y 'visibilitychange'.
+//  3. También en el resize del visualViewport (teclado).
+
+function _fixAppHeight() {
+  const h = window.innerHeight;
+  document.documentElement.style.setProperty('--app-height', h + 'px');
+}
+
+function _resetScrollDrift() {
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+}
+
+function _applyViewportFix() {
+  _fixAppHeight();
+  requestAnimationFrame(_resetScrollDrift);
+}
+
+// Inmediato al parsear el script
+_applyViewportFix();
+
+// Cada vez que la app se muestra (primera vez, segundo lanzamiento, vuelta
+// desde otra app). 'pageshow' se dispara incluso con bfcache.
+window.addEventListener('pageshow', _applyViewportFix);
+
+// Cuando el usuario vuelve a la pestaña/app tras minimizarla
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') _applyViewportFix();
+});
+
+// Rotación o resize (también cubre apertura/cierre del teclado)
+window.addEventListener('resize', () => {
+  _fixAppHeight();
+  // No reseteamos scroll en resize genérico para no interferir con el
+  // teclado virtual; solo en visualViewport donde sabemos que no hay
+  // contenido que deba conservar su posición.
+});
+
+// visualViewport: teclado iOS
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', () => {
-    // Siempre reseteamos cualquier scroll drift en el body cuando el viewport
-    // cambia de tamaño (apertura/cierre del teclado en iOS). El scroll real
-    // de contenido ocurre dentro de .screen y no se ve afectado.
-    requestAnimationFrame(() => {
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    });
+    _fixAppHeight();
+    requestAnimationFrame(_resetScrollDrift);
   });
 }
 
