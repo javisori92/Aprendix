@@ -117,7 +117,7 @@
     overflow-y: auto; overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain; /* prevent scroll from leaking to body */
-    padding: calc(var(--safe-top) + 12px) 18px 24px;
+    padding: calc(var(--safe-top) + 12px) 18px calc(80px + env(safe-area-inset-bottom, 0px));
     opacity: 0; pointer-events: none;
     transform: translateY(20px);
     transition: opacity .3s ease, transform .3s ease;
@@ -135,7 +135,8 @@
 
   /* ── BOTTOM NAV — flex child of body, always at bottom ── */
   .bottom-nav {
-    flex-shrink: 0;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
     width: 100%;
     z-index: 200;
     background: rgba(13,13,20,0.97);
@@ -764,7 +765,7 @@
   /* hide all screens except setup initially */
   #screen-home, #screen-exam-config, #screen-exam,
   #screen-results, #screen-study, #screen-editor,
-  #screen-editor-cat, #screen-stats, #screen-study-config, #screen-challenge, #screen-challenge-result, #screen-editor-subcat, #screen-review, #screen-study-result, #screen-history, #screen-study-history, #screen-flashcard, #screen-flashcard-result, #screen-error-review { display: none; }
+  #screen-editor-cat, #screen-stats, #screen-study-config, #screen-challenge, #screen-challenge-result, #screen-editor-subcat, #screen-review, #screen-study-result, #screen-history, #screen-study-history, #screen-challenge-history, #screen-flashcard, #screen-flashcard-result, #screen-error-review { display: none; }
 
   /* show as flex when active */
   .screen.active { display: flex !important; }
@@ -904,6 +905,15 @@
     0% { transform: scale(2); opacity: 0; }
     100% { transform: scale(1); opacity: 1; }
   }
+  @keyframes tiempoPop {
+    0%   { transform: scale(3.5); opacity: 0; filter: blur(6px); }
+    55%  { transform: scale(0.92); opacity: 1; filter: blur(0); }
+    75%  { transform: scale(1.06); }
+    100% { transform: scale(1); }
+  }
+  .tiempo-anim {
+    animation: tiempoPop .7s cubic-bezier(.22,1,.36,1) forwards;
+  }
 
   /* ── ANSWER REVIEW ── */
   .review-item {
@@ -1019,7 +1029,7 @@
   <div class="mode-grid">
 
     <!-- MODO ESTUDIO -->
-    <div class="mode-card" onclick="toggleModeExpand('expand-study', this)">
+    <div class="mode-card" onclick="openModal('modal-study-intro')">
       <div class="mode-icon green">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5"/></svg>
       </div>
@@ -1027,41 +1037,11 @@
         <h3>Modo Estudio</h3>
         <p>Estudia con retroalimentación inmediata</p>
       </div>
-      <div class="chevron" id="chevron-study"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg></div>
-    </div>
-    <div class="mode-subopts" id="expand-study">
-      <div class="mode-subopt" onclick="goStudy()">
-        <div class="subopt-icon" style="background:rgba(110,255,184,.15);color:var(--accent3);">📚</div>
-        <div>
-          <h4>Estudio general</h4>
-          <p>Todas las preguntas con retroalimentación</p>
-        </div>
-      </div>
-      <div class="mode-subopt" onclick="goStudyConfig()">
-        <div class="subopt-icon" style="background:rgba(255,224,110,.15);color:var(--accent4);">⚙️</div>
-        <div>
-          <h4>Estudio personalizado</h4>
-          <p>Elige las categorías que quieres repasar</p>
-        </div>
-      </div>
-      <div class="mode-subopt" onclick="goFlashcards()">
-        <div class="subopt-icon" style="background:rgba(255,224,110,.12);color:var(--accent4);">⚡</div>
-        <div>
-          <h4>Repaso rápido</h4>
-          <p>Tarjetas: sé si la sabes o no, sin opciones</p>
-        </div>
-      </div>
-      <div class="mode-subopt" onclick="goErrorReview()">
-        <div class="subopt-icon" style="background:rgba(255,79,110,.12);color:var(--danger);">❌</div>
-        <div>
-          <h4>Repaso de errores</h4>
-          <p>Revisa las preguntas que has fallado</p>
-        </div>
-      </div>
+      <div class="chevron"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg></div>
     </div>
 
     <!-- MODO EXAMEN -->
-    <div class="mode-card" onclick="toggleModeExpand('expand-exam', this)">
+    <div class="mode-card" onclick="openModal('modal-exam-intro')">
       <div class="mode-icon purple">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z"/></svg>
       </div>
@@ -1069,23 +1049,7 @@
         <h3>Modo Examen</h3>
         <p>Pon a prueba tus conocimientos</p>
       </div>
-      <div class="chevron" id="chevron-exam"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg></div>
-    </div>
-    <div class="mode-subopts" id="expand-exam">
-      <div class="mode-subopt" onclick="goExamConfig('real')">
-        <div class="subopt-icon" style="background:rgba(255,110,156,.2);color:var(--accent2);">⏱️</div>
-        <div>
-          <h4>Examen general</h4>
-          <p>40 preguntas · 50 min · con penalización</p>
-        </div>
-      </div>
-      <div class="mode-subopt" onclick="goExamConfig('personalizado')">
-        <div class="subopt-icon" style="background:rgba(124,110,255,.2);color:var(--accent);">🎛️</div>
-        <div>
-          <h4>Examen personalizado</h4>
-          <p>Elige categorías, tiempo y cantidad</p>
-        </div>
-      </div>
+      <div class="chevron"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg></div>
     </div>
 
     <!-- MODO DESAFÍO -->
@@ -1095,7 +1059,7 @@
       </div>
       <div class="mode-text">
         <h3>Modo Desafío</h3>
-        <p>¿Cuántas preguntas aguantas sin fallar?</p>
+        <p>¿Te ateves con un desafío basado en todas las preguntas?</p>
       </div>
       <div class="chevron"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg></div>
     </div>
@@ -1227,11 +1191,17 @@
     <div class="q-counter" id="challenge-counter" style="color:var(--danger);font-weight:700;">0</div>
   </div>
 
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-    <div class="badge" style="background:rgba(255,79,110,.15);color:var(--danger);font-size:12px;padding:6px 12px;">
-      ⚡ Modo Desafío
-    </div>
+  <!-- Contrarreloj: 1-minute total timer -->
+  <div id="challenge-total-timer-wrap" style="display:none;text-align:center;font-size:32px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--accent4);margin-bottom:10px;letter-spacing:2px;">60</div>
+
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+    <div class="badge" id="challenge-mode-badge" style="background:rgba(255,79,110,.15);color:var(--danger);font-size:12px;padding:6px 12px;">⚡ Normal</div>
     <div style="font-size:12px;color:var(--text3);">Récord: <span id="challenge-record-live" style="color:var(--accent4);font-weight:700;">0</span></div>
+  </div>
+
+  <!-- Extremo: per-question countdown bar -->
+  <div id="challenge-perq-wrap" style="display:none;height:5px;background:var(--surface3);border-radius:3px;margin-bottom:12px;overflow:hidden;">
+    <div id="challenge-perq-bar" style="height:100%;width:100%;background:var(--accent3);border-radius:3px;"></div>
   </div>
 
   <div class="q-card" id="challenge-q-card">
@@ -1246,10 +1216,11 @@
   <div class="page-header">
     <h1>Desafío terminado</h1>
   </div>
-  <div style="text-align:center;padding:24px 0 20px;">
+  <div style="text-align:center;padding:16px 0 16px;">
+    <div id="ch-res-mode-badge" style="display:inline-block;font-size:11px;font-weight:600;padding:4px 14px;border-radius:20px;background:rgba(255,79,110,.15);color:var(--danger);margin-bottom:12px;">⚡ Normal</div>
     <div id="ch-res-icon" style="font-size:56px;margin-bottom:12px;">💥</div>
     <div id="ch-res-score" style="font-size:64px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--danger);line-height:1;">0</div>
-    <div style="font-size:13px;color:var(--text2);margin-top:6px;">preguntas seguidas sin fallar</div>
+    <div id="ch-res-subtitle" style="font-size:13px;color:var(--text2);margin-top:6px;">preguntas seguidas sin fallar</div>
   </div>
 
   <div class="home-stats" style="margin-bottom:20px;">
@@ -1263,7 +1234,7 @@
     </div>
   </div>
 
-  <div class="card" style="margin-bottom:14px;">
+  <div class="card" id="ch-failed-card" style="margin-bottom:14px;">
     <div class="q-text" style="font-size:13px;font-weight:400;color:var(--text2);margin-bottom:10px;">Fallaste en:</div>
     <div id="ch-failed-q" style="font-size:14px;font-weight:500;line-height:1.5;margin-bottom:10px;"></div>
     <div id="ch-failed-answers" style="font-size:13px;line-height:1.8;"></div>
@@ -1271,7 +1242,7 @@
 
   <div class="btn-row" style="margin-bottom:10px;">
     <button class="btn btn-secondary" onclick="goHome()">Inicio</button>
-    <button class="btn" style="background:var(--danger);color:white;" onclick="goChallenge()">
+    <button class="btn" style="background:var(--danger);color:white;" onclick="repeatChallenge()">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
       Repetir
     </button>
@@ -1563,7 +1534,7 @@
   <div style="position:relative;margin-bottom:12px;">
     <input type="text" id="editor-search" placeholder="Buscar pregunta…" 
       oninput="searchEditorQuestions(this.value)"
-      style="width:100%;padding:10px 36px 10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text1);font-size:14px;font-family:'Sora',sans-serif;box-sizing:border-box;">
+      style="width:100%;padding:10px 36px 10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface2);color:var(--text1);font-size:16px;font-family:'Sora',sans-serif;box-sizing:border-box;">
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--text3);pointer-events:none;"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
   </div>
   <div id="editor-search-results" style="display:none;margin-bottom:8px;"></div>
@@ -1631,6 +1602,18 @@
     Nueva pregunta
   </button>
   <div id="editor-q-list"></div>
+</div>
+
+<!-- ═══ CHALLENGE HISTORY SCREEN ═══ -->
+<div id="screen-challenge-history" class="screen">
+  <div class="page-header">
+    <button class="back-btn" onclick="goStats()">
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
+    </button>
+    <h1 style="font-size:18px;">Historial Desafío</h1>
+    <span id="challenge-history-count" style="font-size:12px;color:var(--text3);margin-left:auto;"></span>
+  </div>
+  <div id="challenge-history-full-list"></div>
 </div>
 
 <!-- ═══ STUDY HISTORY SCREEN ═══ -->
@@ -1703,12 +1686,22 @@
     </div>
     <div class="home-stats" style="margin-bottom:12px;">
       <div class="stat-card" style="border-color:rgba(255,79,110,.3);background:rgba(255,79,110,.05);">
-        <div class="stat-num" id="st-challenge-record" style="font-size:28px;color:var(--danger);">—</div>
-        <div class="stat-label">⚡ Récord Desafío</div>
+        <div class="stat-num" id="st-challenge-record" style="font-size:24px;color:var(--danger);">—</div>
+        <div class="stat-label">⚡ Récord Normal</div>
       </div>
       <div class="stat-card">
         <div class="stat-num" id="st-challenge-runs" style="font-size:22px;">0</div>
         <div class="stat-label">Partidas de Desafío</div>
+      </div>
+    </div>
+    <div class="home-stats" style="margin-bottom:20px;">
+      <div class="stat-card" style="border-color:rgba(255,110,156,.3);background:rgba(255,110,156,.05);">
+        <div class="stat-num" id="st-challenge-extremo-record" style="font-size:24px;color:var(--accent2);">—</div>
+        <div class="stat-label">🔥 Récord Extremo</div>
+      </div>
+      <div class="stat-card" style="border-color:rgba(255,217,110,.3);background:rgba(255,217,110,.05);">
+        <div class="stat-num" id="st-challenge-contrarreloj-record" style="font-size:24px;color:var(--accent4);">—</div>
+        <div class="stat-label">⏱️ Récord Contrarreloj</div>
       </div>
     </div>
     <div class="home-stats" style="margin-bottom:20px;">
@@ -1756,6 +1749,13 @@
       <button id="btn-ver-historial-estudio" onclick="goStudyHistory()" style="display:none;background:none;border:none;font-size:12px;color:var(--accent);font-family:'Sora',sans-serif;font-weight:600;cursor:pointer;padding:0;touch-action:manipulation;">Ver todo →</button>
     </div>
     <div id="st-study-history-list" style="margin-bottom:20px;min-height:40px;"></div>
+
+    <!-- HISTORIAL DE DESAFÍO -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div class="section-title" style="margin-bottom:0;">⚡ Historial Modo Desafío</div>
+      <button id="btn-ver-historial-desafio" onclick="goChallengeHistory()" style="display:none;background:none;border:none;font-size:12px;color:var(--accent);font-family:'Sora',sans-serif;font-weight:600;cursor:pointer;padding:0;touch-action:manipulation;">Ver todo →</button>
+    </div>
+    <div id="st-challenge-history-list" style="margin-bottom:20px;min-height:40px;"></div>
 
     <!-- POR CATEGORÍA -->
     <div class="section-title">📚 Por categoría</div>
@@ -1808,7 +1808,7 @@
     </div>
     <div class="input-group">
       <label>Texto con preguntas</label>
-      <textarea id="import-text-content" rows="7" placeholder="Pega aquí tus preguntas…" style="font-size:13px;font-family:'Sora',sans-serif;"></textarea>
+      <textarea id="import-text-content" rows="7" placeholder="Pega aquí tus preguntas…" style="font-size:16px;font-family:'Sora',sans-serif;"></textarea>
     </div>
     <div id="import-text-preview" style="font-size:12px;color:var(--text3);margin-bottom:12px;"></div>
     <div class="btn-row">
@@ -1883,19 +1883,119 @@
 </div>
 
 <!-- ═══ MODAL: CHALLENGE INTRO ═══ -->
-<div class="modal-overlay" id="modal-challenge-intro">
-  <div class="modal-sheet" style="text-align:center;">
+<!-- ═══ MODAL: ESTUDIO INTRO ═══ -->
+<div class="modal-overlay" id="modal-study-intro">
+  <div class="modal-sheet">
     <div class="modal-handle"></div>
-    <div style="font-size:48px;margin-bottom:12px;">⚡</div>
-    <div style="font-size:20px;font-weight:700;color:var(--danger);margin-bottom:8px;">MODO DESAFÍO</div>
-    <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:16px;">¿Cuánto aguantas sin fallar?</div>
-    <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:24px;">
-      Responde preguntas de todas las categorías. <strong style="color:var(--danger);">Un solo fallo y termina el desafío.</strong><br>Supera tu récord personal.
-    </p>
-    <button class="btn btn-accent2" onclick="startChallengeCountdown()" style="font-size:15px;padding:16px;">
-      ¡Vamos a por ello! 🔥
-    </button>
-    <div style="height:8px;"></div>
+    <div style="text-align:center;padding-bottom:16px;">
+      <div style="font-size:36px;margin-bottom:6px;">📚</div>
+      <div style="font-size:19px;font-weight:700;color:var(--accent3);margin-bottom:4px;">MODO ESTUDIO</div>
+      <div style="font-size:13px;color:var(--text2);">Elige cómo quieres estudiar</div>
+    </div>
+
+    <div class="mode-subopt" onclick="closeModal('modal-study-intro'); goStudy()" style="margin-bottom:8px;">
+      <div class="subopt-icon" style="background:rgba(110,255,184,.15);color:var(--accent3);">📚</div>
+      <div style="flex:1;min-width:0;">
+        <h4>Estudio general</h4>
+        <p>Todas las preguntas con retroalimentación</p>
+      </div>
+    </div>
+
+    <div class="mode-subopt" onclick="closeModal('modal-study-intro'); goStudyConfig()" style="margin-bottom:8px;">
+      <div class="subopt-icon" style="background:rgba(255,224,110,.15);color:var(--accent4);">⚙️</div>
+      <div style="flex:1;min-width:0;">
+        <h4>Estudio personalizado</h4>
+        <p>Elige las categorías que quieres repasar</p>
+      </div>
+    </div>
+
+    <div class="mode-subopt" onclick="closeModal('modal-study-intro'); goFlashcards()" style="margin-bottom:8px;">
+      <div class="subopt-icon" style="background:rgba(255,224,110,.12);color:var(--accent4);">⚡</div>
+      <div style="flex:1;min-width:0;">
+        <h4>Repaso rápido</h4>
+        <p>Tarjetas: sé si la sabes o no, sin opciones</p>
+      </div>
+    </div>
+
+    <div class="mode-subopt" onclick="closeModal('modal-study-intro'); goErrorReview()" style="margin-bottom:20px;">
+      <div class="subopt-icon" style="background:rgba(255,79,110,.12);color:var(--danger);">❌</div>
+      <div style="flex:1;min-width:0;">
+        <h4>Repaso de errores</h4>
+        <p>Revisa las preguntas que has fallado</p>
+      </div>
+    </div>
+
+    <button class="btn btn-secondary" onclick="closeModal('modal-study-intro')">Cancelar</button>
+  </div>
+</div>
+
+<!-- ═══ MODAL: EXAMEN INTRO ═══ -->
+<div class="modal-overlay" id="modal-exam-intro">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div style="text-align:center;padding-bottom:16px;">
+      <div style="font-size:36px;margin-bottom:6px;">📝</div>
+      <div style="font-size:19px;font-weight:700;color:var(--accent);margin-bottom:4px;">MODO EXAMEN</div>
+      <div style="font-size:13px;color:var(--text2);">Elige el tipo de examen</div>
+    </div>
+
+    <div class="mode-subopt" onclick="closeModal('modal-exam-intro'); goExamConfig('real')" style="margin-bottom:8px;">
+      <div class="subopt-icon" style="background:rgba(255,110,156,.2);color:var(--accent2);">⏱️</div>
+      <div style="flex:1;min-width:0;">
+        <h4>Examen general</h4>
+        <p>40 preguntas · 50 min · con penalización</p>
+      </div>
+    </div>
+
+    <div class="mode-subopt" onclick="closeModal('modal-exam-intro'); goExamConfig('personalizado')" style="margin-bottom:20px;">
+      <div class="subopt-icon" style="background:rgba(124,110,255,.2);color:var(--accent);">🎛️</div>
+      <div style="flex:1;min-width:0;">
+        <h4>Examen personalizado</h4>
+        <p>Elige categorías, tiempo y cantidad</p>
+      </div>
+    </div>
+
+    <button class="btn btn-secondary" onclick="closeModal('modal-exam-intro')">Cancelar</button>
+  </div>
+</div>
+
+<!-- ═══ MODAL: CHALLENGE INTRO ═══ -->
+<div class="modal-overlay" id="modal-challenge-intro">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div style="text-align:center;padding-bottom:16px;">
+      <div style="font-size:36px;margin-bottom:6px;">⚡</div>
+      <div style="font-size:19px;font-weight:700;color:var(--danger);margin-bottom:4px;">MODO DESAFÍO</div>
+      <div style="font-size:13px;color:var(--text2);">Elige tu modo de juego</div>
+    </div>
+
+    <div class="mode-subopt" onclick="startChallengeCountdown('normal')" style="margin-bottom:8px;">
+      <div class="subopt-icon" style="background:rgba(255,79,110,.15);color:var(--danger);">⚡</div>
+      <div style="flex:1;min-width:0;">
+        <h4>Normal</h4>
+        <p>¿Cuántas preguntas aguantas sin fallar?</p>
+      </div>
+      <div style="font-size:11px;color:var(--text3);white-space:nowrap;">Récord: <span id="ch-rec-normal" style="color:var(--accent4);font-weight:700;">—</span></div>
+    </div>
+
+    <div class="mode-subopt" onclick="startChallengeCountdown('extremo')" style="margin-bottom:8px;">
+      <div class="subopt-icon" style="background:rgba(255,110,156,.15);color:var(--accent2);">🔥</div>
+      <div style="flex:1;min-width:0;">
+        <h4 style="color:var(--accent2);">Extremo</h4>
+        <p>6 seg. por pregunta · Un fallo o tiempo agotado = fin</p>
+      </div>
+      <div style="font-size:11px;color:var(--text3);white-space:nowrap;">Récord: <span id="ch-rec-extremo" style="color:var(--accent4);font-weight:700;">—</span></div>
+    </div>
+
+    <div class="mode-subopt" onclick="startChallengeCountdown('contrarreloj')" style="margin-bottom:20px;">
+      <div class="subopt-icon" style="background:rgba(255,217,110,.15);color:var(--accent4);">⏱️</div>
+      <div style="flex:1;min-width:0;">
+        <h4 style="color:var(--accent4);">Contrarreloj</h4>
+        <p>1 minuto · Acierta el mayor número posible</p>
+      </div>
+      <div style="font-size:11px;color:var(--text3);white-space:nowrap;">Récord: <span id="ch-rec-contrarreloj" style="color:var(--accent4);font-weight:700;">—</span></div>
+    </div>
+
     <button class="btn btn-secondary" onclick="closeModal('modal-challenge-intro')">Cancelar</button>
   </div>
 </div>
@@ -1905,6 +2005,15 @@
   <div style="text-align:center;pointer-events:none;">
     <div id="countdown-text" style="font-size:96px;font-weight:700;font-family:'JetBrains Mono',monospace;color:white;line-height:1;text-shadow:0 0 40px var(--danger);"></div>
     <div id="countdown-sub" style="font-size:18px;color:var(--text2);margin-top:12px;font-weight:600;"></div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: ¡TIEMPO! OVERLAY ═══ -->
+<div class="modal-overlay" id="modal-tiempo" style="align-items:center;justify-content:center;background:rgba(8,4,12,.92);pointer-events:none;">
+  <div style="text-align:center;pointer-events:none;">
+    <div class="tiempo-anim" style="font-size:72px;line-height:1;">⏱️</div>
+    <div class="tiempo-anim" style="font-size:52px;font-weight:900;font-family:'JetBrains Mono',monospace;color:var(--danger);line-height:1.2;text-shadow:0 0 60px rgba(255,79,110,.9);animation-delay:.18s;">¡TIEMPO!</div>
+    <div style="font-size:15px;color:var(--text2);margin-top:14px;font-weight:500;">Revisando tu resultado…</div>
   </div>
 </div>
 
@@ -2271,8 +2380,10 @@ function showScreen(id) {
 }
 
 function closeModeExpandPanels() {
-  document.querySelectorAll('.mode-subopts').forEach(p => p.classList.remove('open'));
-  document.querySelectorAll('.chevron').forEach(c => c.classList.remove('open'));
+  ['modal-study-intro','modal-exam-intro','modal-challenge-intro'].forEach(id => {
+    const m = document.getElementById(id);
+    if (m) { m.classList.remove('open'); document.body.style.overflow = ''; }
+  });
 }
 
 function goHome() {
@@ -4695,6 +4806,7 @@ function showConfirm(title, msg, onOk, okLabel, onCancel, cancelLabel) {
 
 // Close modals on overlay click
 document.querySelectorAll('.modal-overlay').forEach(m => {
+  if (m.id === 'modal-tiempo') return;
   m.addEventListener('click', e => {
     if (e.target === m) closeModal(m.id);
   });
@@ -4731,7 +4843,10 @@ function loadStats() {
     bestScore10: null,
     bestStreak: 0,
     challengeRecord: 0,
+    challengeExtremoRecord: 0,
+    challengeContrarrelojRecord: 0,
     challengeRuns: 0,
+    challengeHistory: [],
     questions: {}
   };
 }
@@ -4874,7 +4989,10 @@ function _normalizeStats(raw) {
     bestScore10: r.bestScore10 === null || r.bestScore10 === undefined ? null : Number(r.bestScore10) || 0,
     bestStreak: Number(r.bestStreak) || 0,
     challengeRecord: Number(r.challengeRecord) || 0,
+    challengeExtremoRecord: Number(r.challengeExtremoRecord) || 0,
+    challengeContrarrelojRecord: Number(r.challengeContrarrelojRecord) || 0,
     challengeRuns: Number(r.challengeRuns) || 0,
+    challengeHistory: Array.isArray(r.challengeHistory) ? r.challengeHistory : [],
     questions: (r.questions && typeof r.questions === 'object') ? r.questions : {},
     examHistory: Array.isArray(r.examHistory) ? r.examHistory : [],
     studyHistory: Array.isArray(r.studyHistory) ? r.studyHistory : [],
@@ -4911,6 +5029,8 @@ function importStatsFile(e) {
           bestScore10: Math.max(current.bestScore10 || 0, incoming.bestScore10 || 0) || null,
           bestStreak: Math.max(current.bestStreak || 0, incoming.bestStreak || 0),
           challengeRecord: Math.max(current.challengeRecord || 0, incoming.challengeRecord || 0),
+          challengeExtremoRecord: Math.max(current.challengeExtremoRecord || 0, incoming.challengeExtremoRecord || 0),
+          challengeContrarrelojRecord: Math.max(current.challengeContrarrelojRecord || 0, incoming.challengeContrarrelojRecord || 0),
           challengeRuns: current.challengeRuns + incoming.challengeRuns,
           questions: { ...current.questions }
         };
@@ -4931,6 +5051,7 @@ function importStatsFile(e) {
         if (mode === 'merge-history') {
           merged.examHistory = [...(current.examHistory || []), ...(incoming.examHistory || [])].slice(-50);
           merged.studyHistory = [...(current.studyHistory || []), ...(incoming.studyHistory || [])].slice(-100);
+          merged.challengeHistory = [...(current.challengeHistory || []), ...(incoming.challengeHistory || [])].slice(-30);
           merged.activityDays = [...new Set([...(current.activityDays || []), ...(incoming.activityDays || [])])].sort();
         }
 
@@ -5064,7 +5185,7 @@ function goHistory() {
   const list = document.getElementById('history-full-list');
   const countEl = document.getElementById('history-count');
   list.innerHTML = '';
-  if (countEl) countEl.textContent = `${history.length} examen${history.length===1?'':'es'}`;
+  if (countEl) countEl.textContent = `${history.length} ${history.length===1?'examen':'exámenes'}`;
   history.forEach(e => list.appendChild(buildHistoryCard(e, false)));
   showScreen('screen-history');
 }
@@ -5143,11 +5264,11 @@ function renderStudyHistorySection(st) {
 
 function goStudyHistory() {
   const st = loadStats();
-  const history = (st.studyHistory || []).slice().reverse();
+  const history = (st.studyHistory || []).slice(-30).reverse();
   const list = document.getElementById('study-history-full-list');
   const countEl = document.getElementById('study-history-count');
   list.innerHTML = '';
-  if (countEl) countEl.textContent = `${history.length} sesión${history.length===1?'':'es'}`;
+  if (countEl) countEl.textContent = `${history.length} ${history.length===1?'sesión':'sesiones'}`;
   history.forEach(e => list.appendChild(buildStudyCard(e, false)));
   showScreen('screen-study-history');
 }
@@ -5170,6 +5291,10 @@ function renderStats() {
   document.getElementById('st-challenge-record').textContent =
     (st.challengeRecord || 0) > 0 ? `${st.challengeRecord} ⚡` : '—';
   document.getElementById('st-challenge-runs').textContent = st.challengeRuns || 0;
+  const extremoRecEl = document.getElementById('st-challenge-extremo-record');
+  if (extremoRecEl) extremoRecEl.textContent = (st.challengeExtremoRecord || 0) > 0 ? `${st.challengeExtremoRecord} 🔥` : '—';
+  const ctRecEl2 = document.getElementById('st-challenge-contrarreloj-record');
+  if (ctRecEl2) ctRecEl2.textContent = (st.challengeContrarrelojRecord || 0) > 0 ? `${st.challengeContrarrelojRecord} ⏱️` : '—';
 
   // Global accuracy
   const qArr = Object.values(st.questions);
@@ -5207,6 +5332,7 @@ function renderStats() {
 
   // Study history
   renderStudyHistorySection(st);
+  renderChallengeHistorySection(st);
   const catEntries = Object.entries(catMap).sort((a,b) => {
     const pa = a[1].correct / Math.max(a[1].correct + a[1].wrong, 1);
     const pb = b[1].correct / Math.max(b[1].correct + b[1].wrong, 1);
@@ -5337,52 +5463,94 @@ function renderStats() {
 let challengeQueue = [];
 let challengeIndex = 0;
 let challengeScore = 0;
+let challengeFinished = false;
+let challengeMode = 'normal'; // 'normal' | 'extremo' | 'contrarreloj'
+let challengePerQTimerInterval = null;
+let challengeTotalTimerInterval = null;
+let challengeTotalTimeLeft = 60;
+let challengePerQTimeLeft = 0;
 
 function goChallenge() {
   if (db.questions.length === 0) {
     showToast('No hay preguntas. Añade preguntas primero.', 'error'); return;
   }
-  // Show intro modal
   const st = loadStats();
-  const rec = st.challengeRecord || 0;
-  // Update record display in case it changed
-  DOM['challenge-record-live'].textContent = rec;
+  const normalEl = document.getElementById('ch-rec-normal');
+  const extremoEl = document.getElementById('ch-rec-extremo');
+  const ctEl = document.getElementById('ch-rec-contrarreloj');
+  if (normalEl) normalEl.textContent = (st.challengeRecord || 0) > 0 ? st.challengeRecord : '—';
+  if (extremoEl) extremoEl.textContent = (st.challengeExtremoRecord || 0) > 0 ? st.challengeExtremoRecord : '—';
+  if (ctEl) ctEl.textContent = (st.challengeContrarrelojRecord || 0) > 0 ? st.challengeContrarrelojRecord : '—';
   openModal('modal-challenge-intro');
 }
 
-function startChallengeCountdown() {
+function startChallengeCountdown(mode) {
+  challengeMode = mode || 'normal';
   closeModal('modal-challenge-intro');
 
-  // Prepare queue — starts pure random, gets harder near record
   challengeQueue = buildChallengeQueue(0);
   challengeIndex = 0;
   challengeScore = 0;
+  challengeFinished = false;
 
   const st = loadStats();
-  DOM['challenge-record-live'].textContent = st.challengeRecord || 0;
+  const modeRecord = challengeMode === 'extremo' ? (st.challengeExtremoRecord || 0)
+    : challengeMode === 'contrarreloj' ? (st.challengeContrarrelojRecord || 0)
+    : (st.challengeRecord || 0);
+  DOM['challenge-record-live'].textContent = modeRecord;
   DOM['challenge-progress'].style.width = '0%';
   DOM['challenge-counter'].textContent = '0';
 
-  // Show challenge screen underneath
+  // Update mode badge on challenge screen
+  const modeBadgeEl = document.getElementById('challenge-mode-badge');
+  const modeBadgeTxts = { normal: '⚡ Normal', extremo: '🔥 Extremo', contrarreloj: '⏱️ Contrarreloj' };
+  const modeBadgeBgs  = { normal: 'rgba(255,79,110,.15)', extremo: 'rgba(255,110,156,.15)', contrarreloj: 'rgba(255,217,110,.15)' };
+  const modeBadgeFgs  = { normal: 'var(--danger)', extremo: 'var(--accent2)', contrarreloj: 'var(--accent4)' };
+  if (modeBadgeEl) {
+    modeBadgeEl.textContent = modeBadgeTxts[challengeMode] || '⚡ Normal';
+    modeBadgeEl.style.background = modeBadgeBgs[challengeMode] || 'rgba(255,79,110,.15)';
+    modeBadgeEl.style.color = modeBadgeFgs[challengeMode] || 'var(--danger)';
+  }
+  // Show/hide per-question bar and total timer
+  const perqWrap = document.getElementById('challenge-perq-wrap');
+  const totalTimerWrap = document.getElementById('challenge-total-timer-wrap');
+  if (perqWrap) perqWrap.style.display = challengeMode === 'extremo' ? '' : 'none';
+  if (totalTimerWrap) {
+    totalTimerWrap.style.display = challengeMode === 'contrarreloj' ? '' : 'none';
+    totalTimerWrap.textContent = '60';
+    totalTimerWrap.style.color = 'var(--accent4)';
+  }
+  // Progress bar initial state
+  if (challengeMode === 'contrarreloj') {
+    DOM['challenge-progress'].style.width = '100%';
+    DOM['challenge-progress'].style.background = 'linear-gradient(90deg,var(--accent4),var(--accent3))';
+  } else if (challengeMode === 'extremo') {
+    DOM['challenge-progress'].style.width = '100%';
+    DOM['challenge-progress'].style.background = 'linear-gradient(90deg,var(--accent3),var(--danger))';
+  } else {
+    DOM['challenge-progress'].style.background = 'linear-gradient(90deg,var(--danger),var(--accent2))';
+  }
+
   showScreen('screen-challenge');
 
-  // Start countdown overlay
   const overlay = document.getElementById('modal-challenge-countdown');
   const textEl = document.getElementById('countdown-text');
   const subEl = document.getElementById('countdown-sub');
   overlay.classList.add('open');
 
+  const modeSubtitles = { normal: '¡Sin fallar!', extremo: '¡6 seg. por pregunta!', contrarreloj: '¡1 minuto!' };
   const steps = [
     { text: '3', sub: '', color: 'var(--danger)' },
     { text: '2', sub: '', color: 'var(--warning)' },
     { text: '1', sub: '', color: 'var(--accent3)' },
-    { text: '¡VAMOS!', sub: '¡Buena suerte!', color: 'white' },
+    { text: '¡VAMOS!', sub: modeSubtitles[challengeMode] || '¡Buena suerte!', color: 'white' },
   ];
 
   let i = 0;
   function showStep() {
     if (i >= steps.length) {
       overlay.classList.remove('open');
+      if (challengeMode === 'contrarreloj') startContrarrelojTimer();
       renderChallengeQuestion();
       return;
     }
@@ -5392,12 +5560,85 @@ function startChallengeCountdown() {
     textEl.style.textShadow = `0 0 40px ${s.color}`;
     textEl.className = 'countdown-num';
     subEl.textContent = s.sub;
-    // Re-trigger animation
     void textEl.offsetWidth;
     textEl.className = 'countdown-num';
     setTimeout(showStep, i === steps.length ? 900 : 800);
   }
   showStep();
+}
+
+function startContrarrelojTimer() {
+  if (challengeTotalTimerInterval) clearInterval(challengeTotalTimerInterval);
+  challengeTotalTimeLeft = 60;
+  const el = document.getElementById('challenge-total-timer-wrap');
+  challengeTotalTimerInterval = setInterval(() => {
+    challengeTotalTimeLeft--;
+    if (el) {
+      el.textContent = challengeTotalTimeLeft;
+      if (challengeTotalTimeLeft <= 10) el.style.color = 'var(--danger)';
+      else if (challengeTotalTimeLeft <= 20) el.style.color = 'var(--warning)';
+    }
+    const pct = (challengeTotalTimeLeft / 60) * 100;
+    DOM['challenge-progress'].style.width = `${pct}%`;
+    if (challengeTotalTimeLeft <= 10)
+      DOM['challenge-progress'].style.background = 'linear-gradient(90deg,var(--danger),var(--accent2))';
+    else if (challengeTotalTimeLeft <= 20)
+      DOM['challenge-progress'].style.background = 'linear-gradient(90deg,var(--warning),var(--accent4))';
+    if (challengeTotalTimeLeft <= 0) {
+      clearInterval(challengeTotalTimerInterval);
+      challengeTotalTimerInterval = null;
+      document.querySelectorAll('#challenge-answers .answer-opt').forEach(o => {
+        o.onclick = null; o.style.pointerEvents = 'none';
+      });
+      showTiempoOverlay(() => finishChallenge(null));
+    }
+  }, 1000);
+}
+
+function startExtremoPerQTimer() {
+  stopExtremoPerQTimer();
+  challengePerQTimeLeft = 60;
+  const bar = document.getElementById('challenge-perq-bar');
+  if (bar) { bar.style.width = '100%'; bar.style.background = 'var(--accent3)'; }
+  challengePerQTimerInterval = setInterval(() => {
+    challengePerQTimeLeft--;
+    const pct = (challengePerQTimeLeft / 60) * 100;
+    if (bar) {
+      bar.style.width = `${pct}%`;
+      if (pct < 34) bar.style.background = 'var(--warning)';
+      if (pct < 17) bar.style.background = 'var(--danger)';
+    }
+    DOM['challenge-progress'].style.width = `${pct}%`;
+    if (pct < 34) DOM['challenge-progress'].style.background = 'linear-gradient(90deg,var(--warning),var(--danger))';
+    if (challengePerQTimeLeft <= 0) {
+      stopExtremoPerQTimer();
+      document.querySelectorAll('#challenge-answers .answer-opt').forEach(o => {
+        o.onclick = null; o.style.pointerEvents = 'none';
+      });
+      showTiempoOverlay(() => finishChallenge(null));
+    }
+  }, 100);
+}
+
+function stopExtremoPerQTimer() {
+  if (challengePerQTimerInterval) {
+    clearInterval(challengePerQTimerInterval);
+    challengePerQTimerInterval = null;
+  }
+}
+
+function showTiempoOverlay(callback) {
+  const overlay = document.getElementById('modal-tiempo');
+  if (!overlay) { if (callback) callback(); return; }
+  const anims = overlay.querySelectorAll('.tiempo-anim');
+  anims.forEach(el => { el.style.animation = 'none'; void el.offsetWidth; el.style.animation = ''; });
+  overlay.style.pointerEvents = 'all';
+  overlay.classList.add('open');
+  setTimeout(() => {
+    overlay.classList.remove('open');
+    overlay.style.pointerEvents = 'none';
+    if (callback) callback();
+  }, 1900);
 }
 
 function buildChallengeQueue(adaptiveWeight) {
@@ -5415,11 +5656,12 @@ function buildChallengeQueue(adaptiveWeight) {
 // 80%+ of record → weight increases linearly up to 0.8
 function getChallengeAdaptiveWeight() {
   const st = loadStats();
-  const record = st.challengeRecord || 0;
-  if (record < 5) return 0; // not enough history, stay random
-  const progress = challengeScore / record; // 0 to 1+
-  if (progress < 0.8) return 0; // below 80% of record: pure random
-  // 80-100%+ of record: linearly ramp from 0 to 0.8
+  const record = challengeMode === 'extremo' ? (st.challengeExtremoRecord || 0)
+    : challengeMode === 'contrarreloj' ? (st.challengeContrarrelojRecord || 0)
+    : (st.challengeRecord || 0);
+  if (record < 5) return 0;
+  const progress = challengeScore / record;
+  if (progress < 0.8) return 0;
   return Math.min((progress - 0.8) / 0.2 * 0.8, 0.8);
 }
 
@@ -5433,10 +5675,11 @@ function renderChallengeQuestion() {
 
   const q = challengeQueue[challengeIndex];
 
-  // Show danger zone indicator when at/past record
   const st = loadStats();
-  const record = st.challengeRecord || 0;
-  const inDangerZone = record >= 5 && challengeScore >= record * 0.8;
+  const record = challengeMode === 'extremo' ? (st.challengeExtremoRecord || 0)
+    : challengeMode === 'contrarreloj' ? (st.challengeContrarrelojRecord || 0)
+    : (st.challengeRecord || 0);
+  const inDangerZone = challengeMode !== 'contrarreloj' && record >= 5 && challengeScore >= record * 0.8;
   const counterEl = DOM['challenge-counter'];
   counterEl.style.color = challengeScore >= record && record > 0 ? 'var(--accent4)' : inDangerZone ? 'var(--warning)' : 'var(--danger)';
 
@@ -5456,42 +5699,45 @@ function renderChallengeQuestion() {
     el.onclick = () => challengeAnswer(i);
     wrap.appendChild(el);
   });
+  if (challengeMode === 'extremo') startExtremoPerQTimer();
 }
 
 function challengeAnswer(i) {
   const q = challengeQueue[challengeIndex];
   const opts = document.querySelectorAll('#challenge-answers .answer-opt');
   opts.forEach(o => o.onclick = null);
+  if (challengeMode === 'extremo') stopExtremoPerQTimer();
 
   if (i === q.opts.correct) {
     opts[i].classList.add('correct');
     challengeScore++;
     challengeIndex++;
-
     DOM['challenge-counter'].textContent = challengeScore;
-    const pct = Math.min((challengeScore % 20) / 20 * 100, 100);
-    // Progress bar color: gold when at record, orange in danger zone, red otherwise
-    const st2 = loadStats();
-    const rec = st2.challengeRecord || 0;
-    const barColor = challengeScore > rec && rec > 0
-      ? 'linear-gradient(90deg,var(--accent4),var(--accent2))'
-      : challengeScore >= rec * 0.8 && rec >= 5
-        ? 'linear-gradient(90deg,var(--warning),var(--danger))'
-        : 'linear-gradient(90deg,var(--danger),var(--accent2))';
-    DOM['challenge-progress'].style.background = barColor;
-    DOM['challenge-progress'].style.width = `${pct === 0 && challengeScore > 0 ? 100 : pct}%`;
-
-    if (challengeScore > (st2.challengeRecord || 0)) {
-      DOM['challenge-record-live'].textContent = challengeScore;
+    if (challengeMode === 'contrarreloj') {
+      setTimeout(() => renderChallengeQuestion(), 300);
+    } else {
+      const pct = Math.min((challengeScore % 20) / 20 * 100, 100);
+      const st2 = loadStats();
+      const rec = challengeMode === 'extremo' ? (st2.challengeExtremoRecord || 0) : (st2.challengeRecord || 0);
+      const barColor = challengeScore > rec && rec > 0
+        ? 'linear-gradient(90deg,var(--accent4),var(--accent2))'
+        : challengeScore >= rec * 0.8 && rec >= 5
+          ? 'linear-gradient(90deg,var(--warning),var(--danger))'
+          : 'linear-gradient(90deg,var(--danger),var(--accent2))';
+      DOM['challenge-progress'].style.background = barColor;
+      DOM['challenge-progress'].style.width = `${pct === 0 && challengeScore > 0 ? 100 : pct}%`;
+      if (challengeScore > rec) DOM['challenge-record-live'].textContent = challengeScore;
+      setTimeout(() => renderChallengeQuestion(), 400);
     }
-
-    setTimeout(() => renderChallengeQuestion(), 400);
-
   } else {
     opts[i].classList.add('wrong');
     opts[q.opts.correct].classList.add('correct');
-    // Brief pause so player sees correct/wrong colors, then dramatic overlay
-    setTimeout(() => showChallengeFail(q), 700);
+    if (challengeMode === 'contrarreloj') {
+      challengeIndex++;
+      setTimeout(() => renderChallengeQuestion(), 500);
+    } else {
+      setTimeout(() => showChallengeFail(q), 700);
+    }
   }
 }
 
@@ -5538,19 +5784,41 @@ function showChallengeFail(failedQ) {
 }
 
 function finishChallenge(failedQ) {
-  const st = loadStats();
-  const prevRecord = st.challengeRecord || 0;
+  if (challengeFinished) return;
+  challengeFinished = true;
+  stopExtremoPerQTimer();
+  if (challengeTotalTimerInterval) { clearInterval(challengeTotalTimerInterval); challengeTotalTimerInterval = null; }
+
+  const stBefore = loadStats();
+  const prevRecord = challengeMode === 'extremo' ? (stBefore.challengeExtremoRecord || 0)
+    : challengeMode === 'contrarreloj' ? (stBefore.challengeContrarrelojRecord || 0)
+    : (stBefore.challengeRecord || 0);
   const isNewRecord = challengeScore > prevRecord;
 
-  st.challengeRuns = (st.challengeRuns || 0) + 1;
-  if (isNewRecord) st.challengeRecord = challengeScore;
-  saveStats(st);
+  recordChallengeStats(challengeMode, challengeScore);
+  const st = loadStats();
+  const newModeRecord = challengeMode === 'extremo' ? (st.challengeExtremoRecord || 0)
+    : challengeMode === 'contrarreloj' ? (st.challengeContrarrelojRecord || 0)
+    : (st.challengeRecord || 0);
 
-  // Populate result header metrics
   document.getElementById('ch-res-score').textContent = challengeScore;
-  document.getElementById('ch-res-record').textContent = st.challengeRecord || 0;
+  document.getElementById('ch-res-record').textContent = newModeRecord;
 
-  document.getElementById('ch-res-icon').textContent = challengeScore === 0 ? '😬' : challengeScore < 5 ? '😅' : challengeScore < 15 ? '💪' : challengeScore < 30 ? '🔥' : '👑';
+  // Mode badge on result screen
+  const modeLabels = { normal: '⚡ Normal', extremo: '🔥 Extremo', contrarreloj: '⏱️ Contrarreloj' };
+  const modeBgs = { normal: 'rgba(255,79,110,.15)', extremo: 'rgba(255,110,156,.15)', contrarreloj: 'rgba(255,217,110,.15)' };
+  const modeCols = { normal: 'var(--danger)', extremo: 'var(--accent2)', contrarreloj: 'var(--accent4)' };
+  const resModeEl = document.getElementById('ch-res-mode-badge');
+  if (resModeEl) {
+    resModeEl.textContent = modeLabels[challengeMode] || '⚡ Normal';
+    resModeEl.style.background = modeBgs[challengeMode] || 'rgba(255,79,110,.15)';
+    resModeEl.style.color = modeCols[challengeMode] || 'var(--danger)';
+  }
+  const subtitles = { normal: 'preguntas seguidas sin fallar', extremo: 'preguntas sin fallar ni agotar tiempo', contrarreloj: 'preguntas correctas en 1 minuto' };
+  const subtitleEl = document.getElementById('ch-res-subtitle');
+  if (subtitleEl) subtitleEl.textContent = subtitles[challengeMode] || 'preguntas seguidas sin fallar';
+
+  document.getElementById('ch-res-icon').textContent = challengeScore === 0 ? '😬' : challengeScore < 5 ? '😅' : challengeScore < 15 ? '😤' : challengeScore < 30 ? '🔥' : '👑';
 
   if (isNewRecord && challengeScore > 0) {
     document.getElementById('ch-res-new').textContent = '¡Nuevo récord!';
@@ -5560,18 +5828,17 @@ function finishChallenge(failedQ) {
     const diff = prevRecord - challengeScore;
     document.getElementById('ch-res-new').textContent = diff > 0 ? `${diff}` : '=';
     document.getElementById('ch-res-new').style.color = diff > 0 ? 'var(--danger)' : 'var(--success)';
-    document.getElementById('ch-res-new-label').textContent = diff > 0 ? `pregunta${diff===1?'':'s'} para el récord` : 'Récord igualado';
+    document.getElementById('ch-res-new-label').textContent = diff > 0 ? `para el récord` : 'Récord igualado';
   }
 
-  if (failedQ) {
+  const failedCard = document.getElementById('ch-failed-card');
+  if (failedCard) failedCard.style.display = (failedQ && challengeMode !== 'contrarreloj') ? '' : 'none';
+  if (failedQ && challengeMode !== 'contrarreloj') {
     document.getElementById('ch-failed-q').textContent = failedQ.question;
     const letters = ['A','B','C','D'];
-    // Find which answer the user chose — it's the one marked 'wrong'
     const wrongEl = document.querySelector('#challenge-answers .answer-opt.wrong');
     const wrongIdx = wrongEl ? [...document.querySelectorAll('#challenge-answers .answer-opt')].indexOf(wrongEl) : -1;
-    const userAnswerText = wrongIdx >= 0
-      ? `${letters[wrongIdx]}) ${failedQ.opts.opts[wrongIdx]}`
-      : '—';
+    const userAnswerText = wrongIdx >= 0 ? `${letters[wrongIdx]}) ${failedQ.opts.opts[wrongIdx]}` : '—';
     const correctText = `${letters[failedQ.opts.correct]}) ${failedQ.opts.opts[failedQ.opts.correct]}`;
     document.getElementById('ch-failed-answers').innerHTML =
       `<div style="color:var(--danger);">Tu respuesta: <strong>${esc(userAnswerText)}</strong></div>` +
@@ -5579,6 +5846,89 @@ function finishChallenge(failedQ) {
   }
 
   showScreen('screen-challenge-result');
+}
+
+function recordChallengeStats(mode, score) {
+  const st = loadStats();
+  st.challengeRuns = (st.challengeRuns || 0) + 1;
+  if (mode === 'extremo') {
+    if (score > (st.challengeExtremoRecord || 0)) st.challengeExtremoRecord = score;
+  } else if (mode === 'contrarreloj') {
+    if (score > (st.challengeContrarrelojRecord || 0)) st.challengeContrarrelojRecord = score;
+  } else {
+    if (score > (st.challengeRecord || 0)) st.challengeRecord = score;
+  }
+  if (!st.challengeHistory) st.challengeHistory = [];
+  st.challengeHistory.push({
+    date: Date.now(),
+    time: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+    mode, score
+  });
+  if (st.challengeHistory.length > 30) st.challengeHistory = st.challengeHistory.slice(-30);
+  recordActivity(st);
+  saveStats(st);
+}
+
+function repeatChallenge() {
+  if (db.questions.length === 0) { showToast('No hay preguntas.', 'error'); return; }
+  startChallengeCountdown(challengeMode);
+}
+
+function buildChallengeHistoryCard(e) {
+  const mode = e.mode || 'normal';
+  const modeLabels = { normal: '⚡ Normal', extremo: '🔥 Extremo', contrarreloj: '⏱️ Contrarreloj' };
+  const modeColors = { normal: 'var(--danger)', extremo: 'var(--accent2)', contrarreloj: 'var(--accent4)' };
+  const modeLabel = modeLabels[mode] || '⚡ Normal';
+  const modeColor = modeColors[mode] || 'var(--danger)';
+  const score = e.score ?? 0;
+  const scoreColor = score >= 20 ? 'var(--success)' : score >= 10 ? 'var(--warning)' : 'var(--danger)';
+  const dateObj = new Date(e.date);
+  const dateStr = dateObj.toLocaleDateString('es-ES', { day:'numeric', month:'short', year:'numeric' });
+  const timeStr = e.time || dateObj.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+  const scoreLabel = score === 0
+    ? 'Has fallado en la primera pregunta...'
+    : mode === 'contrarreloj' ? `${score} respuestas correctas en 1 min`
+    : score === 1 ? 'Solo has respondido correctamente 1 pregunta'
+    : `${score} respuestas seguidas sin fallar`;
+  const card = document.createElement('div');
+  card.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;';
+  card.innerHTML = `
+    <div style="flex-shrink:0;width:44px;height:44px;border-radius:10px;background:rgba(0,0,0,.2);border:2px solid ${scoreColor};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${scoreColor};">${score}</div>
+    <div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap;">
+        <span style="font-size:10px;font-weight:600;color:${modeColor};">${modeLabel}</span>
+        <span style="font-size:11px;color:var(--text3);">${dateStr} · ${timeStr}</span>
+      </div>
+      <div style="font-size:12px;color:var(--text2);">${scoreLabel}</div>
+    </div>`;
+  return card;
+}
+
+function renderChallengeHistorySection(st) {
+  const container = document.getElementById('st-challenge-history-list');
+  const btn = document.getElementById('btn-ver-historial-desafio');
+  if (!container) return;
+  container.innerHTML = '';
+  const history = st.challengeHistory || [];
+  if (history.length === 0) {
+    container.innerHTML = '<p style="font-size:13px;color:var(--text3);">Juega partidas de Desafío para ver tu historial.</p>';
+    if (btn) btn.style.display = 'none';
+    return;
+  }
+  history.slice(-5).reverse().forEach(e => container.appendChild(buildChallengeHistoryCard(e)));
+  if (btn) btn.style.display = history.length > 5 ? '' : 'none';
+}
+
+function goChallengeHistory() {
+  const st = loadStats();
+  const history = (st.challengeHistory || []).slice().reverse();
+  const list = document.getElementById('challenge-history-full-list');
+  const countEl = document.getElementById('challenge-history-count');
+  if (!list) return;
+  list.innerHTML = '';
+  if (countEl) countEl.textContent = `${history.length} partida${history.length===1?'':'s'}`;
+  history.forEach(e => list.appendChild(buildChallengeHistoryCard(e)));
+  showScreen('screen-challenge-history');
 }
 
 function recordReviewRoundStats(queue, results) {
@@ -5600,6 +5950,8 @@ function recordReviewRoundStats(queue, results) {
 
 function confirmAbortChallenge() {
   showConfirm('¿Abandonar desafío?', `Llevas ${challengeScore} pregunta${challengeScore === 1 ? '' : 's'} correctas. Se perderá tu progreso.`, () => {
+    stopExtremoPerQTimer();
+    if (challengeTotalTimerInterval) { clearInterval(challengeTotalTimerInterval); challengeTotalTimerInterval = null; }
     goHome();
   });
 }
@@ -6021,7 +6373,7 @@ const SCREEN_DEPTH = {
   'screen-exam': 2, 'screen-study': 2, 'screen-challenge': 2,
   'screen-flashcard': 2, 'screen-error-review': 2,
   'screen-results': 3, 'screen-study-result': 3, 'screen-flashcard-result': 3,
-  'screen-review': 4, 'screen-history': 3, 'screen-study-history': 3,
+  'screen-review': 4, 'screen-history': 3, 'screen-study-history': 3, 'screen-challenge-history': 3,
   'screen-editor-cat': 2, 'screen-editor-subcat': 3,
 };
 
@@ -6082,6 +6434,8 @@ function initDomCache() {
     // History
     'history-full-list','history-count',
     'study-history-full-list','study-history-count',
+    'challenge-history-full-list','challenge-history-count',
+    'st-challenge-history-list','btn-ver-historial-desafio',
     // Review
     'review-list','review-counter',
     // Home toggles & misc
@@ -6148,18 +6502,15 @@ document.addEventListener('touchstart', function(e) {
 // En iOS Safari, cuando el teclado aparece/desaparece, window.scrollY puede
 // quedar corrompido. Escuchamos el resize del visualViewport para corregirlo.
 if (window.visualViewport) {
-  let _lastVVHeight = window.visualViewport.height;
   window.visualViewport.addEventListener('resize', () => {
-    const h = window.visualViewport.height;
-    if (h > _lastVVHeight + 50) {
-      // El teclado se acaba de cerrar: resetear cualquier scroll drift
-      requestAnimationFrame(() => {
-        window.scrollTo(0, 0);
-        document.documentElement.scrollTop = 0;
-        document.body.scrollTop = 0;
-      });
-    }
-    _lastVVHeight = h;
+    // Siempre reseteamos cualquier scroll drift en el body cuando el viewport
+    // cambia de tamaño (apertura/cierre del teclado en iOS). El scroll real
+    // de contenido ocurre dentro de .screen y no se ve afectado.
+    requestAnimationFrame(() => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    });
   });
 }
 
@@ -6300,7 +6651,7 @@ initDomCache();
 
 // Ensure all non-setup screens are hidden at start
 ['screen-home','screen-exam-config','screen-exam',
- 'screen-results','screen-study','screen-study-result','screen-editor','screen-editor-cat','screen-editor-subcat','screen-review','screen-history','screen-study-history','screen-flashcard','screen-flashcard-result','screen-error-review','screen-stats','screen-study-config','screen-challenge','screen-challenge-result'].forEach(id => {
+ 'screen-results','screen-study','screen-study-result','screen-editor','screen-editor-cat','screen-editor-subcat','screen-review','screen-history','screen-study-history','screen-challenge-history','screen-flashcard','screen-flashcard-result','screen-error-review','screen-stats','screen-study-config','screen-challenge','screen-challenge-result'].forEach(id => {
   const el = document.getElementById(id);
   if (el) { el.style.display = 'none'; el.classList.remove('active'); }
 });
