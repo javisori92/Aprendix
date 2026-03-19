@@ -3393,6 +3393,8 @@ function studyNext() {
         );
       }
     } else {
+      // Registrar stats de la ronda de repaso terminada (solo las preguntas contestadas)
+      recordReviewRoundStats(studyReviewQueue, studyReviewResults);
       if (studyWrong.length === 0) {
         showStudyResults(true);
       } else {
@@ -3401,22 +3403,6 @@ function studyNext() {
           `Aún quedan ${studyWrong.length} pregunta${studyWrong.length===1?'':'s'} sin responder correctamente. ¿Seguir repasando?`,
           () => { startStudyReview(); },
           'Seguir repasando',
-              } else {
-                // Registrar stats de la ronda de repaso terminada (solo las que se contestaron)
-                recordReviewRoundStats(studyReviewQueue, studyReviewResults);
-                if (studyWrong.length === 0) {
-                  showStudyResults(true);
-                } else {
-                  showConfirm(
-                    'Repaso completado',
-                    `Aún quedan ${studyWrong.length} pregunta${studyWrong.length===1?'':'s'} sin responder correctamente. ¿Seguir repasando?`,
-                    () => { startStudyReview(); },
-                    'Seguir repasando',
-                    () => showStudyResults(false),
-                    'Ver resultados'
-                  );
-                }
-              }
           () => showStudyResults(false),
           'Ver resultados'
         );
@@ -3451,22 +3437,45 @@ function showStudyResults(perfect) {
   const total = studyResults.length;
   const pct = total > 0 ? Math.round((correct / total) * 100) : 0;
 
+  let streak = 0;
+  let bestStreak = 0;
+  studyResults.forEach(r => {
+    if (r) {
+      streak++;
+      if (streak > bestStreak) bestStreak = streak;
     } else {
-      // Registrar stats de la ronda de repaso terminada (solo las preguntas contestadas)
-      recordReviewRoundStats(studyReviewQueue, studyReviewResults);
-      if (studyWrong.length === 0) {
-        showStudyResults(true);
-      } else {
-        showConfirm(
-          'Repaso completado',
-          `Aún quedan ${studyWrong.length} pregunta${studyWrong.length===1?'':'s'} sin responder correctamente. ¿Seguir repasando?`,
-          () => { startStudyReview(); },
-          'Seguir repasando',
-          () => showStudyResults(false),
-          'Ver resultados'
-        );
-      }
+      streak = 0;
     }
+  });
+
+  DOM['study-res-correct'].textContent = correct;
+  DOM['study-res-wrong'].textContent = wrong;
+  DOM['study-res-total'].textContent = total;
+  DOM['study-res-pct'].textContent = `${pct}%`;
+  DOM['study-res-streak'].textContent = `${bestStreak}`;
+
+  const icon = perfect || pct >= 90 ? '🏆' : pct >= 70 ? '🎓' : pct >= 50 ? '📘' : '💪';
+  DOM['study-res-icon'].textContent = icon;
+  DOM['study-res-label'].textContent =
+    studyPhase === 'review' ? 'Resultado acumulado tras repaso' : 'Precisión en esta sesión';
+
+  const phaseCard = DOM['study-res-phase-card'];
+  const wrongList = DOM['study-res-wrong-list'];
+  if (studyWrong.length === 0) {
+    phaseCard.style.display = 'none';
+  } else {
+    phaseCard.style.display = '';
+    const uniqueWrong = [...new Set(studyWrong.map(q => q.question))];
+    const top = uniqueWrong.slice(0, 6);
+    wrongList.innerHTML = top.map((txt, idx) => `${idx + 1}. ${esc(txt)}`).join('<br>');
+    if (uniqueWrong.length > top.length) {
+      wrongList.innerHTML += `<br><span style="color:var(--text3)">+${uniqueWrong.length - top.length} más…</span>`;
+    }
+  }
+
+  showScreen('screen-study-result');
+  playSound('complete');
+}
 
 function startStudyReview() {
   // studyWrong contains questions with original a/b/c/d fields intact
@@ -4622,20 +4631,15 @@ function closeModal(id) {
     document.activeElement.blur();
   }
   const m = document.getElementById(id);
+  if (!m) return;
   m.classList.remove('open');
   document.body.style.overflow = '';
   // iOS puede restaurar el viewport en dos fases al cerrar teclado.
-  // Hacemos una corrección inmediata y otra diferida para asegurar
-  // que la bottom-nav vuelva a su posición original.
+  // Hacemos una corrección inmediata y otra diferida para evitar drift.
   const restoreViewport = () => {
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
-    const nav = DOM['bottom-nav'] || document.getElementById('bottom-nav');
-    if (nav) {
-      nav.style.transform = 'translateZ(0)';
-      requestAnimationFrame(() => { nav.style.transform = ''; });
-    }
   };
   requestAnimationFrame(restoreViewport);
   setTimeout(restoreViewport, 260);
@@ -5461,26 +5465,6 @@ function finishChallenge(failedQ) {
   st.challengeRuns = (st.challengeRuns || 0) + 1;
   if (isNewRecord) st.challengeRecord = challengeScore;
   saveStats(st);
-}
-
-function recordReviewRoundStats(queue, results) {
-  // Actualiza contadores por pregunta para las preguntas repasadas en esta ronda.
-  // NO incrementa studySessions ni crea nueva entrada en studyHistory.
-  if (!queue || !results || results.length === 0) return;
-  const st = loadStats();
-  const nowTs = Date.now();
-  results.forEach((result, i) => {
-    const q = queue[i];
-    if (!q) return;
-    if (!st.questions[q.id]) st.questions[q.id] = { correct: 0, wrong: 0, text: q.question, cat: q.cat, subcat: q.subcat || '' };
-    if (result) st.questions[q.id].correct++;
-    else st.questions[q.id].wrong++;
-    st.questions[q.id].lastSeen = nowTs;
-  });
-  saveStats(st);
-}
-
-// ── EXAM ──────────────────────────────────────────────────────────────
   document.getElementById('ch-res-icon').textContent = challengeScore === 0 ? '😬' : challengeScore < 5 ? '😅' : challengeScore < 15 ? '💪' : challengeScore < 30 ? '🔥' : '👑';
 
   if (isNewRecord && challengeScore > 0) {
@@ -5510,6 +5494,23 @@ function recordReviewRoundStats(queue, results) {
   }
 
   showScreen('screen-challenge-result');
+}
+
+function recordReviewRoundStats(queue, results) {
+  // Actualiza contadores por pregunta para las preguntas repasadas en esta ronda.
+  // NO incrementa studySessions ni crea nueva entrada en studyHistory.
+  if (!queue || !results || results.length === 0) return;
+  const st = loadStats();
+  const nowTs = Date.now();
+  results.forEach((result, i) => {
+    const q = queue[i];
+    if (!q) return;
+    if (!st.questions[q.id]) st.questions[q.id] = { correct: 0, wrong: 0, text: q.question, cat: q.cat, subcat: q.subcat || '' };
+    if (result) st.questions[q.id].correct++;
+    else st.questions[q.id].wrong++;
+    st.questions[q.id].lastSeen = nowTs;
+  });
+  saveStats(st);
 }
 
 function confirmAbortChallenge() {
