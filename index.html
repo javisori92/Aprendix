@@ -6544,10 +6544,29 @@ document.addEventListener('touchend', function(e) {
     if (Math.abs(t.clientX - (el._touchStartX || t.clientX)) > 10 ||
         Math.abs(t.clientY - (el._touchStartY || t.clientY)) > 10) return;
   }
-  // Prevent ghost click delay
+  // Arm the passthrough guard NOW, before the click fires.
+  // This ensures any iOS phantom click that arrives after this point
+  // (at the same coordinates on the newly rendered screen) is blocked,
+  // even if e.preventDefault() below fails to suppress it on some iOS builds.
+  _lastUIChangeAt = Date.now();
   if (e.cancelable) e.preventDefault();
   el.click();
 }, { passive: false });
+
+// 🚫 Phantom click guard (capture phase).
+// iOS Safari can fire a synthetic trusted click ~300 ms after touchend at
+// the same screen coordinates — even when e.preventDefault() was called in
+// touchend.  We intercept that here: if the current touch started BEFORE
+// the last UI change (screen/modal/re-render), the click is stale.
+// isTrusted check ensures we never block programmatic el.click() calls.
+document.addEventListener('click', function(e) {
+  if (!e.isTrusted) return;                           // programmatic — always allow
+  if (_currentTouchStartAt > 0 &&                    // at least one touch has occurred
+      _currentTouchStartAt < _lastUIChangeAt) {       // touch predates last UI change
+    e.stopImmediatePropagation();
+    e.preventDefault();
+  }
+}, { capture: true });
 
 document.addEventListener('touchstart', function(e) {
   // Record the timestamp of every new finger-down event
