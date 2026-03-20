@@ -2373,6 +2373,10 @@ function showScreen(id) {
   window.scrollTo(0, 0);
   document.documentElement.scrollTop = 0;
   document.body.scrollTop = 0;
+  // Re-sync --app-height once all CSS transitions have completed (~300ms).
+  // Guards against any transient innerHeight captured during modal/keyboard
+  // dismiss that may have left --app-height at a stale value.
+  setTimeout(_fixAppHeight, 350);
 
   // nav — use opacity so position:fixed stays rendered on iOS GPU layer
   const nav = DOM['bottom-nav'];
@@ -4803,7 +4807,10 @@ function closeModal(id) {
     document.body.scrollTop = 0;
   };
   requestAnimationFrame(restoreViewport);
-  setTimeout(restoreViewport, 260);
+  // Re-sync --app-height after modal + keyboard animations fully complete.
+  // blur() above can fire a transient visualViewport.resize with a wrong
+  // window.innerHeight; this deferred call captures the stable value.
+  setTimeout(() => { restoreViewport(); _fixAppHeight(); }, 310);
 }
 
 function showConfirm(title, msg, onOk, okLabel, onCancel, cancelLabel) {
