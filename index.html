@@ -80,6 +80,7 @@
     overflow: hidden; /* NEVER scroll at body level */
     overscroll-behavior: none; /* prevent iOS bounce affecting nav */
     background: var(--bg);
+    -webkit-user-select: none;
   }
 
   body {
@@ -122,7 +123,7 @@
     overflow-y: auto; overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain; /* prevent scroll from leaking to body */
-    padding: calc(var(--safe-top) + 12px) 18px calc(80px + env(safe-area-inset-bottom, 0px));
+    padding: calc(var(--safe-top) + 12px) 18px calc(60px + env(safe-area-inset-bottom, 0px));
     opacity: 0; pointer-events: none;
     transform: translateY(20px);
     transition: opacity .3s ease, transform .3s ease;
@@ -143,15 +144,18 @@
     position: fixed;
     bottom: 0; left: 0; right: 0;
     width: 100%;
+    height: calc(60px + env(safe-area-inset-bottom, 0px));
     z-index: 200;
     background: rgba(13,13,20,0.97);
     backdrop-filter: saturate(180%) blur(20px);
     -webkit-backdrop-filter: saturate(180%) blur(20px);
     border-top: 1px solid rgba(255,255,255,0.07);
     display: flex;
-    align-items: stretch;
+    align-items: flex-start;
     padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-sizing: border-box;
     transition: opacity .2s ease;
+    will-change: transform;
   }
   .nav-btn {
     flex: 1; display: flex; flex-direction: column;
@@ -2361,6 +2365,11 @@ function showScreen(id) {
   next.style.display = 'flex';
   next.getBoundingClientRect();
   next.classList.add('active');
+
+  // Ensure scroll is reset to prevent bottom-nav displacement in iOS
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
 
   // nav — use opacity so position:fixed stays rendered on iOS GPU layer
   const nav = DOM['bottom-nav'];
@@ -5474,6 +5483,7 @@ let challengePerQTimerInterval = null;
 let challengeTotalTimerInterval = null;
 let challengeTotalTimeLeft = 60;
 let challengePerQTimeLeft = 0;
+let challengeAnswerLog = []; // [{q, correct}] — per-question results for stats
 
 function goChallenge() {
   if (db.questions.length === 0) {
@@ -5497,6 +5507,7 @@ function startChallengeCountdown(mode) {
   challengeIndex = 0;
   challengeScore = 0;
   challengeFinished = false;
+  challengeAnswerLog = [];
 
   const st = loadStats();
   const modeRecord = challengeMode === 'extremo' ? (st.challengeExtremoRecord || 0)
@@ -5713,6 +5724,8 @@ function challengeAnswer(i) {
   opts.forEach(o => o.onclick = null);
   if (challengeMode === 'extremo') stopExtremoPerQTimer();
 
+  challengeAnswerLog.push({ q, correct: i === q.opts.correct });
+
   if (i === q.opts.correct) {
     opts[i].classList.add('correct');
     challengeScore++;
@@ -5871,6 +5884,16 @@ function recordChallengeStats(mode, score) {
   });
   if (st.challengeHistory.length > 30) st.challengeHistory = st.challengeHistory.slice(-30);
   recordActivity(st);
+
+  // Record per-question results so they count in global/category/hardest stats
+  const now = Date.now();
+  challengeAnswerLog.forEach(({ q, correct }) => {
+    if (!st.questions[q.id]) st.questions[q.id] = { correct: 0, wrong: 0, text: q.question, cat: q.cat, subcat: q.subcat || '' };
+    if (correct) st.questions[q.id].correct++;
+    else st.questions[q.id].wrong++;
+    st.questions[q.id].lastSeen = now;
+  });
+
   saveStats(st);
 }
 
@@ -5980,10 +6003,10 @@ function applyTheme(theme) {
   const t = document.getElementById('toggle-theme');
   if (t) t.classList.toggle('on', theme !== 'light');
 }
-// Load saved theme on init
+// Load saved theme on init (default: dark)
 (function() {
   const saved = localStorage.getItem(THEME_KEY);
-  if (saved) applyTheme(saved);
+  applyTheme(saved || 'dark');
 })();
 
 // ══════════════════════════════════════════════
@@ -6053,7 +6076,6 @@ function playSound(type) {
 // ══════════════════════════════════════════════
 let fcQueue = [], fcIndex = 0, fcKnown = 0, fcUnknown = 0;
 let fcOriginalPool = [], fcBadge = '';
-
 function goFlashcards() {
   const pool = db.questions;
   if (pool.length === 0) { showToast('No hay preguntas', 'error'); return; }
