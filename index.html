@@ -494,6 +494,7 @@
   .exam-header {
     display: flex; align-items: center; gap: 12px;
     margin-bottom: 16px;
+    overflow: visible;
   }
   .progress-bar-wrap {
     flex: 1; height: 4px; background: var(--surface3);
@@ -958,12 +959,12 @@
     to   { transform:translateY(0); opacity:1; }
   }
   @keyframes penaltyFloat {
-    0%   { transform: translateY(0)   scale(1.4); opacity: 1; }
-    80%  { transform: translateY(-44px) scale(1);   opacity: 1; }
-    100% { transform: translateY(-56px) scale(0.9); opacity: 0; }
+    0%   { transform: scale(1.4);   opacity: 1; }
+    80%  { transform: translateY(36px) scale(1);   opacity: 1; }
+    100% { transform: translateY(48px) scale(0.9); opacity: 0; }
   }
   .penalty-pill {
-    position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+    position: absolute; top: 100%; right: 0; left: auto;
     background: var(--danger); color: #fff;
     font-size: 15px; font-weight: 800; font-family: 'JetBrains Mono', monospace;
     padding: 2px 8px; border-radius: 20px;
@@ -5884,7 +5885,7 @@ function finishChallenge(failedQ) {
     resModeEl.style.background = modeBgs[challengeMode] || 'rgba(255,79,110,.15)';
     resModeEl.style.color = modeCols[challengeMode] || 'var(--danger)';
   }
-  const subtitles = { normal: 'preguntas seguidas sin fallar', extremo: 'preguntas sin fallar ni agotar tiempo', contrarreloj: 'respuestas netas correctas en 1 minuto (−1 por fallo)' };
+  const subtitles = { normal: 'preguntas seguidas sin fallar', extremo: 'preguntas sin fallar ni agotar tiempo', contrarreloj: 'respuestas correctas totales en 1 minuto (−1 por fallo)' };
   const subtitleEl = document.getElementById('ch-res-subtitle');
   if (subtitleEl) subtitleEl.textContent = subtitles[challengeMode] || 'preguntas seguidas sin fallar';
 
