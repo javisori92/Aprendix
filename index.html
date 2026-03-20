@@ -2365,6 +2365,10 @@ function showScreen(id) {
   next.getBoundingClientRect();
   next.classList.add('active');
 
+  // 🚫 Touch passthrough guard: any touch that started before this
+  // transition is considered stale and will be ignored by the touchend handler.
+  _lastUIChangeAt = Date.now();
+
   // Ensure scroll is reset to prevent bottom-nav displacement in iOS
   window.scrollTo(0, 0);
   document.documentElement.scrollTop = 0;
@@ -4776,6 +4780,8 @@ function openModal(id) {
   const m = document.getElementById(id);
   m.classList.add('open');
   document.body.style.overflow = 'hidden';
+  // 🚫 Touch passthrough guard: stale touches won't activate modal content
+  _lastUIChangeAt = Date.now();
 }
 
 function closeModal(id) {
@@ -6509,8 +6515,20 @@ function initDomCache() {
 //  IOS SAFARI TOUCH FIX
 //  We fix this globally by forwarding touchend → click on any
 //  element that has an onclick attribute or handler.
+//
+//  Touch passthrough guard:
+//  _lastUIChangeAt  = timestamp of last screen/modal transition
+//  _currentTouchStartAt = timestamp of the current finger-down event
+//  If the touch started BEFORE the UI changed, it's a stale touch
+//  that crossed a screen boundary — we discard it entirely.
 // ══════════════════════════════════════════════
+let _lastUIChangeAt = 0;
+let _currentTouchStartAt = 0;
+
 document.addEventListener('touchend', function(e) {
+  // 🚫 Discard touches that started before the current screen/modal was shown
+  if (_currentTouchStartAt < _lastUIChangeAt) return;
+
   const el = e.target.closest('[onclick], .answer-opt, .mode-card, .category-item, .chip, .back-btn, .nav-btn');
   if (!el) return;
   // Only fire if touch didn't move (not a scroll)
@@ -6525,6 +6543,9 @@ document.addEventListener('touchend', function(e) {
 }, { passive: false });
 
 document.addEventListener('touchstart', function(e) {
+  // Record the timestamp of every new finger-down event
+  _currentTouchStartAt = Date.now();
+
   const el = e.target.closest('[onclick], .answer-opt, .mode-card, .category-item, .chip, .back-btn, .nav-btn');
   if (!el) return;
   if (e.touches && e.touches.length > 0) {
