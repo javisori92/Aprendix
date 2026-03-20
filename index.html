@@ -618,7 +618,6 @@
     border-radius: 0;
     position: relative;
     transition: transform .25s cubic-bezier(.4,0,.2,1), background .2s;
-    will-change: transform;
     z-index: 1;
   }
   .swipe-actions {
@@ -3276,6 +3275,8 @@ function startTimer(sec) {
 
 function stopTimer() {
   if (examTimerInterval) { clearInterval(examTimerInterval); examTimerInterval = null; }
+  const el = DOM['exam-timer'];
+  if (el) el.classList.remove('urgent');
 }
 
 function updateTimerDisplay(el, sec) {
@@ -3874,7 +3875,10 @@ function buildSwipeRow({ label, sublabel, onTap, onRename, onDelete }) {
     const handleTouchMove = (e) => {
       dx = e.touches[0].clientX - startX;
       const dy = e.touches[0].clientY - startY;
-      if (!isSwiping && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 6) isSwiping = true;
+      if (!isSwiping && Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 6) {
+        isSwiping = true;
+        item.style.willChange = 'transform'; // promote only while swiping
+      }
       if (!isSwiping) return;
       const current = isOpen ? -SWIPE_W + Math.min(0, dx) : Math.min(0, Math.max(-SWIPE_W, dx));
       item.style.transition = 'none';
@@ -3882,6 +3886,7 @@ function buildSwipeRow({ label, sublabel, onTap, onRename, onDelete }) {
     };
     
     const handleTouchEnd = () => {
+      item.style.willChange = 'auto'; // release GPU layer after swipe
       if (!isSwiping) { isOpen ? closeSwipeRow(wrapper) : onTap(); return; }
       item.style.transition = '';
       const threshold = SWIPE_W * 0.4;
@@ -3893,7 +3898,7 @@ function buildSwipeRow({ label, sublabel, onTap, onRename, onDelete }) {
     
     item.addEventListener('touchstart', handleTouchStart, { passive: true });
     item.addEventListener('touchmove', handleTouchMove, { passive: true });
-    item.addEventListener('touchend', handleTouchEnd);
+    item.addEventListener('touchend', handleTouchEnd, { passive: true });
     item.addEventListener('click', () => { if (!isOpen) onTap(); });
     
     // Guardar referencias para cleanup posterior
@@ -5616,16 +5621,19 @@ function startExtremoPerQTimer() {
   challengePerQTimeLeft = 60;
   const bar = document.getElementById('challenge-perq-bar');
   if (bar) { bar.style.width = '100%'; bar.style.background = 'var(--accent3)'; }
+  let _rafId = null;
   challengePerQTimerInterval = setInterval(() => {
     challengePerQTimeLeft--;
-    const pct = (challengePerQTimeLeft / 60) * 100;
-    if (bar) {
-      bar.style.width = `${pct}%`;
-      if (pct < 34) bar.style.background = 'var(--warning)';
-      if (pct < 17) bar.style.background = 'var(--danger)';
-    }
-    DOM['challenge-progress'].style.width = `${pct}%`;
-    if (pct < 34) DOM['challenge-progress'].style.background = 'linear-gradient(90deg,var(--warning),var(--danger))';
+    if (_rafId) cancelAnimationFrame(_rafId);
+    _rafId = requestAnimationFrame(() => {
+      const pct = (challengePerQTimeLeft / 60) * 100;
+      if (bar) {
+        bar.style.width = `${pct}%`;
+        bar.style.background = pct < 17 ? 'var(--danger)' : pct < 34 ? 'var(--warning)' : 'var(--accent3)';
+      }
+      DOM['challenge-progress'].style.width = `${pct}%`;
+      if (pct < 34) DOM['challenge-progress'].style.background = 'linear-gradient(90deg,var(--warning),var(--danger))';
+    });
     if (challengePerQTimeLeft <= 0) {
       stopExtremoPerQTimer();
       document.querySelectorAll('#challenge-answers .answer-opt').forEach(o => {
@@ -5633,7 +5641,7 @@ function startExtremoPerQTimer() {
       });
       showTiempoOverlay(() => finishChallenge(null));
     }
-  }, 100);
+  }, 200);
 }
 
 function stopExtremoPerQTimer() {
@@ -6022,7 +6030,15 @@ function toggleSound() {
   // Sync iOS toggle
   const t = document.getElementById('toggle-sound');
   if (t) t.classList.toggle('on', _soundEnabled);
-  if (_soundEnabled) playSound('correct');
+  // Suspend/resume AudioContext to free hardware when not in use
+  if (!_soundEnabled && _audioCtx && _audioCtx.state === 'running') {
+    _audioCtx.suspend();
+  } else if (_soundEnabled && _audioCtx && _audioCtx.state === 'suspended') {
+    _audioCtx.resume();
+    playSound('correct');
+  } else if (_soundEnabled) {
+    playSound('correct');
+  }
 }
 // Init sound toggle state on load
 (function() {
@@ -6504,7 +6520,7 @@ document.addEventListener('touchend', function(e) {
         Math.abs(t.clientY - (el._touchStartY || t.clientY)) > 10) return;
   }
   // Prevent ghost click delay
-  e.preventDefault();
+  if (e.cancelable) e.preventDefault();
   el.click();
 }, { passive: false });
 
@@ -6558,7 +6574,21 @@ window.addEventListener('pageshow', _applyViewportFix);
 
 // Cuando el usuario vuelve a la pestaña/app tras minimizarla
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') _applyViewportFix();
+  if (document.visibilityState === 'hidden') {
+    // Pause all active timers to prevent CPU/battery drain in background
+    stopTimer();
+    stopExtremoPerQTimer();
+    if (challengeTotalTimerInterval) {
+      clearInterval(challengeTotalTimerInterval);
+      challengeTotalTimerInterval = null;
+    }
+    // Suspend AudioContext to release audio hardware
+    if (_audioCtx && _audioCtx.state === 'running') _audioCtx.suspend();
+  } else {
+    _applyViewportFix();
+    // Resume AudioContext if sound is enabled
+    if (_soundEnabled && _audioCtx && _audioCtx.state === 'suspended') _audioCtx.resume();
+  }
 });
 
 // Rotación o resize (también cubre apertura/cierre del teclado)
@@ -6574,7 +6604,7 @@ if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', () => {
     _fixAppHeight();
     requestAnimationFrame(_resetScrollDrift);
-  });
+  }, { passive: true });
 }
 
 let _deferredPrompt = null;
