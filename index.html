@@ -957,6 +957,20 @@
     from { transform:translateY(20px); opacity:0; }
     to   { transform:translateY(0); opacity:1; }
   }
+  @keyframes penaltyFloat {
+    0%   { transform: translateY(0)   scale(1.4); opacity: 1; }
+    80%  { transform: translateY(-44px) scale(1);   opacity: 1; }
+    100% { transform: translateY(-56px) scale(0.9); opacity: 0; }
+  }
+  .penalty-pill {
+    position: absolute; top: -8px; left: 50%; transform: translateX(-50%);
+    background: var(--danger); color: #fff;
+    font-size: 15px; font-weight: 800; font-family: 'JetBrains Mono', monospace;
+    padding: 2px 8px; border-radius: 20px;
+    pointer-events: none; white-space: nowrap;
+    animation: penaltyFloat .75s cubic-bezier(.22,1,.36,1) forwards;
+    z-index: 50;
+  }
   #pwa-banner.visible { display: flex; align-items: center; gap: 12px; }
   .pwa-icon {
     width:44px; height:44px; border-radius:10px; flex-shrink:0;
@@ -1196,7 +1210,9 @@
     <div class="progress-bar-wrap">
       <div class="progress-bar" id="challenge-progress" style="background:linear-gradient(90deg,var(--danger),var(--accent2));"></div>
     </div>
-    <div class="q-counter" id="challenge-counter" style="color:var(--danger);font-weight:700;">0</div>
+    <div style="position:relative;display:inline-block;" id="challenge-counter-wrap">
+      <div class="q-counter" id="challenge-counter" style="color:var(--danger);font-weight:700;">0</div>
+    </div>
   </div>
 
   <!-- Contrarreloj: 1-minute total timer -->
@@ -5772,6 +5788,21 @@ function challengeAnswer(i) {
     opts[i].classList.add('wrong');
     opts[q.opts.correct].classList.add('correct');
     if (challengeMode === 'contrarreloj') {
+      // Penalty: each wrong answer subtracts one correct (floor 0)
+      if (challengeScore > 0) {
+        challengeScore--;
+        DOM['challenge-counter'].textContent = challengeScore;
+        DOM['challenge-counter'].style.color = 'var(--danger)';
+      }
+      // Floating "-1" pill animation
+      const wrap = document.getElementById('challenge-counter-wrap');
+      if (wrap) {
+        const pill = document.createElement('div');
+        pill.className = 'penalty-pill';
+        pill.textContent = '−1';
+        wrap.appendChild(pill);
+        pill.addEventListener('animationend', () => pill.remove());
+      }
       challengeIndex++;
       setTimeout(() => renderChallengeQuestion(), 500);
     } else {
@@ -5853,7 +5884,7 @@ function finishChallenge(failedQ) {
     resModeEl.style.background = modeBgs[challengeMode] || 'rgba(255,79,110,.15)';
     resModeEl.style.color = modeCols[challengeMode] || 'var(--danger)';
   }
-  const subtitles = { normal: 'preguntas seguidas sin fallar', extremo: 'preguntas sin fallar ni agotar tiempo', contrarreloj: 'preguntas correctas en 1 minuto' };
+  const subtitles = { normal: 'preguntas seguidas sin fallar', extremo: 'preguntas sin fallar ni agotar tiempo', contrarreloj: 'respuestas netas correctas en 1 minuto (−1 por fallo)' };
   const subtitleEl = document.getElementById('ch-res-subtitle');
   if (subtitleEl) subtitleEl.textContent = subtitles[challengeMode] || 'preguntas seguidas sin fallar';
 
