@@ -97,16 +97,19 @@
     flex-direction: column;
     overflow: hidden;
     font-size: 15px;
-    /* --app-height is set by JS on every load/resize/pageshow to always
-       reflect the true window.innerHeight in iOS PWA standalone mode.
-       Fallback to 100dvh for non-JS / first paint. */
-    height: var(--app-height, 100dvh);
-    min-height: var(--app-height, 100dvh);
-    max-height: var(--app-height, 100dvh);
+     /* --app-height is set by JS on every load/resize/pageshow to track
+       the tallest stable visible viewport on iPhone/iOS PWA startup.
+       Fallback to 100svh for first paint. */
+     height: var(--app-height, 100svh);
+     min-height: var(--app-height, 100svh);
+     max-height: var(--app-height, 100svh);
     overscroll-behavior: none;
   }
   body.keyboard-open {
     overscroll-behavior: none;
+  }
+  body.power-save::before {
+    opacity: 0;
   }
 
   /* ── SCREEN CONTAINER fills all space above the nav ── */
@@ -160,8 +163,6 @@
     min-height: var(--nav-height);
     z-index: 200;
     background: rgba(13,13,20,0.97);
-    backdrop-filter: saturate(180%) blur(20px);
-    -webkit-backdrop-filter: saturate(180%) blur(20px);
     border-top: 1px solid rgba(255,255,255,0.07);
     display: flex;
     align-items: flex-start;
@@ -171,6 +172,16 @@
     will-change: transform;
     transform: translateZ(0);
     backface-visibility: hidden;
+  }
+  body.nav-visible:not(.keyboard-open) .bottom-nav {
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+  }
+  body.power-save .bottom-nav,
+  body.power-save .modal-overlay.open,
+  body.power-save #modal-challenge-countdown.open {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
   body.keyboard-open .bottom-nav {
     opacity: 0 !important;
@@ -194,6 +205,14 @@
   .nav-btn svg { width: 24px; height: 24px; margin-bottom: 3px; }
   .nav-btn.active { color: var(--accent); }
   .nav-btn.active svg { filter: drop-shadow(0 0 5px var(--accent)); }
+  body.power-save .nav-btn.active svg { filter: none; }
+  body.power-save .screen,
+  body.power-save .card,
+  body.power-save .bottom-nav,
+  body.power-save .modal-sheet,
+  body.power-save .q-card {
+    transition-duration: .15s;
+  }
 
   /* ── CARDS ── */
   .card {
@@ -529,6 +548,7 @@
     color: var(--text2); flex-shrink: 0;
   }
   .timer-display.urgent { color: var(--danger); animation: pulse 1s infinite; }
+  body.power-save .timer-display.urgent { animation: none; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
 
   .q-counter {
@@ -685,13 +705,16 @@
   /* ── MODAL ── */
   .modal-overlay {
     position: fixed; inset: 0; z-index: 200;
-    background: rgba(0,0,0,.7); backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    background: rgba(0,0,0,.7);
     display: flex; align-items: flex-end;
     opacity: 0; pointer-events: none;
     transition: opacity .25s;
   }
-  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal-overlay.open {
+    opacity: 1; pointer-events: all;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
   .modal-sheet {
     width: 100%; background: var(--surface);
     border-top-left-radius: 24px; border-top-right-radius: 24px;
@@ -923,6 +946,8 @@
   /* ── CHALLENGE COUNTDOWN ── */
   #modal-challenge-countdown {
     background: rgba(0,0,0,.85);
+  }
+  #modal-challenge-countdown.open {
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
   }
@@ -941,6 +966,10 @@
   }
   .tiempo-anim {
     animation: tiempoPop .7s cubic-bezier(.22,1,.36,1) forwards;
+  }
+  body.power-save .countdown-num,
+  body.power-save .tiempo-anim {
+    animation: none !important;
   }
 
   /* ── ANSWER REVIEW ── */
@@ -1146,6 +1175,22 @@
         </div>
       </div>
       <div class="ios-toggle" id="toggle-sound">
+        <div class="ios-toggle-knob"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Batería</div>
+  <div class="card" style="padding:0;margin-bottom:20px;">
+    <div class="settings-row" onclick="togglePowerSave()">
+      <div class="settings-info">
+        <div class="settings-icon-wrap">🔋</div>
+        <div>
+          <div class="settings-label">Modo ahorro</div>
+          <div class="settings-sub">Reduce blur, animaciones y trabajo en segundo plano</div>
+        </div>
+      </div>
+      <div class="ios-toggle" id="toggle-power-save">
         <div class="ios-toggle-knob"></div>
       </div>
     </div>
@@ -2275,7 +2320,7 @@ function saveDB() {
         showToast('Almacenamiento lleno. Elimina algunas preguntas.', 'error');
       }
     }
-  }, 300);
+  }, _powerSaveEnabled ? 700 : 300);
 }
 function saveDBNow() {
   if (_saveDBTimer) { clearTimeout(_saveDBTimer); _saveDBTimer = null; }
@@ -2412,12 +2457,13 @@ function showScreen(id) {
   // Re-sync --app-height once all CSS transitions have completed (~300ms).
   // Guards against any transient innerHeight captured during modal/keyboard
   // dismiss that may have left --app-height at a stale value.
-  setTimeout(_fixAppHeight, 350);
+  _scheduleAppHeightSync(350);
 
   // nav — use opacity so position:fixed stays rendered on iOS GPU layer
   const nav = DOM['bottom-nav'];
   const mainScreens = ['screen-home','screen-editor','screen-editor-cat','screen-editor-subcat','screen-stats','screen-study-config'];
   const showNav = mainScreens.includes(id);
+  document.body.classList.toggle('nav-visible', showNav);
   if (nav) {
     nav.style.opacity = showNav ? '1' : '0';
     nav.style.pointerEvents = showNav ? '' : 'none';
@@ -4842,11 +4888,11 @@ function closeModal(id) {
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
   };
-  requestAnimationFrame(restoreViewport);
+  _scheduleScrollDriftReset();
   // Re-sync --app-height after modal + keyboard animations fully complete.
   // blur() above can fire a transient visualViewport.resize with a wrong
   // window.innerHeight; this deferred call captures the stable value.
-  setTimeout(() => { restoreViewport(); _fixAppHeight(); }, 310);
+  setTimeout(() => { restoreViewport(); _scheduleAppHeightSync(); }, 310);
 }
 
 function showConfirm(title, msg, onOk, okLabel, onCancel, cancelLabel) {
@@ -5706,19 +5752,15 @@ function startExtremoPerQTimer() {
   challengePerQTimeLeft = 60;
   const bar = document.getElementById('challenge-perq-bar');
   if (bar) { bar.style.width = '100%'; bar.style.background = 'var(--accent3)'; }
-  let _rafId = null;
   challengePerQTimerInterval = setInterval(() => {
     challengePerQTimeLeft--;
-    if (_rafId) cancelAnimationFrame(_rafId);
-    _rafId = requestAnimationFrame(() => {
-      const pct = (challengePerQTimeLeft / 60) * 100;
-      if (bar) {
-        bar.style.width = `${pct}%`;
-        bar.style.background = pct < 17 ? 'var(--danger)' : pct < 34 ? 'var(--warning)' : 'var(--accent3)';
-      }
-      DOM['challenge-progress'].style.width = `${pct}%`;
-      if (pct < 34) DOM['challenge-progress'].style.background = 'linear-gradient(90deg,var(--warning),var(--danger))';
-    });
+    const pct = (challengePerQTimeLeft / 60) * 100;
+    if (bar) {
+      bar.style.width = `${pct}%`;
+      bar.style.background = pct < 17 ? 'var(--danger)' : pct < 34 ? 'var(--warning)' : 'var(--accent3)';
+    }
+    DOM['challenge-progress'].style.width = `${pct}%`;
+    if (pct < 34) DOM['challenge-progress'].style.background = 'linear-gradient(90deg,var(--warning),var(--danger))';
     if (challengePerQTimeLeft <= 0) {
       stopExtremoPerQTimer();
       document.querySelectorAll('#challenge-answers .answer-opt').forEach(o => {
@@ -6098,6 +6140,21 @@ function confirmAbortChallenge() {
 //  MEJORA 10: TEMA CLARO/OSCURO
 // ══════════════════════════════════════════════
 const THEME_KEY = 'aprendix_theme';
+const POWER_SAVE_KEY = 'aprendix_power_save';
+let _powerSaveEnabled = localStorage.getItem(POWER_SAVE_KEY) === '1';
+
+function applyPowerSave(enabled) {
+  _powerSaveEnabled = !!enabled;
+  localStorage.setItem(POWER_SAVE_KEY, _powerSaveEnabled ? '1' : '0');
+  document.body.classList.toggle('power-save', _powerSaveEnabled);
+  const t = document.getElementById('toggle-power-save');
+  if (t) t.classList.toggle('on', _powerSaveEnabled);
+}
+
+function togglePowerSave() {
+  applyPowerSave(!_powerSaveEnabled);
+}
+
 function toggleTheme() {
   const isLight = document.documentElement.getAttribute('data-theme') === 'light';
   applyTheme(isLight ? 'dark' : 'light');
@@ -6117,6 +6174,7 @@ function applyTheme(theme) {
 (function() {
   const saved = localStorage.getItem(THEME_KEY);
   applyTheme(saved || 'dark');
+  applyPowerSave(_powerSaveEnabled);
 })();
 
 // ══════════════════════════════════════════════
@@ -6146,6 +6204,8 @@ function toggleSound() {
 (function() {
   const t = document.getElementById('toggle-sound');
   if (t) t.classList.toggle('on', _soundEnabled);
+  const p = document.getElementById('toggle-power-save');
+  if (p) p.classList.toggle('on', _powerSaveEnabled);
 })();
 function getAudioCtx() {
   if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -6584,7 +6644,7 @@ function initDomCache() {
     // Review
     'review-list','review-counter',
     // Home toggles & misc
-    'toggle-theme','toggle-sound',
+    'toggle-theme','toggle-sound','toggle-power-save',
     'btn-ver-historial','btn-new-exam',
     // Exam buttons
     'btn-prev','btn-next','btn-finish',
@@ -6681,18 +6741,64 @@ document.addEventListener('touchstart', function(e) {
 // En iOS standalone (PWA), window.scrollY puede quedar con un valor distinto
 // de 0 al reabrir la app por segunda vez, desplazando el bottom-nav hacia
 // arriba. La solución es:
-//  1. Usar --app-height = window.innerHeight en lugar de 100dvh.
+//  1. Usar una medida robusta del viewport en lugar de 100dvh.
 //  2. Forzar window.scrollTo(0,0) en cada 'pageshow' y 'visibilitychange'.
 //  3. También en el resize del visualViewport (teclado).
 
+function _getViewportHeight() {
+  const vv = window.visualViewport;
+  const vvHeight = vv ? Math.round(vv.height + vv.offsetTop) : 0;
+  const docHeight = document.documentElement ? document.documentElement.clientHeight : 0;
+  return Math.max(window.innerHeight || 0, vvHeight, docHeight);
+}
+
 function _fixAppHeight() {
-  const h = _keyboardOpen ? _stableAppHeight : window.innerHeight;
+  const h = _keyboardOpen ? _stableAppHeight : _getViewportHeight();
   document.documentElement.style.setProperty('--app-height', h + 'px');
 }
 
-let _stableAppHeight = window.innerHeight;
+let _stableAppHeight = _getViewportHeight();
 let _keyboardOpen = false;
 let _keyboardStateTimer = null;
+let _appHeightSyncTimer = null;
+let _scrollDriftRaf = null;
+let _visualViewportResizeTimer = null;
+let _pwaBannerHideTimer = null;
+let _pwaBannerShowTimer = null;
+let _challengeCountdownRestartPending = false;
+
+function _scheduleAppHeightSync(delay = 0) {
+  if (_appHeightSyncTimer) clearTimeout(_appHeightSyncTimer);
+  _appHeightSyncTimer = setTimeout(() => {
+    _appHeightSyncTimer = null;
+    _fixAppHeight();
+  }, delay);
+}
+
+function _scheduleScrollDriftReset() {
+  if (_scrollDriftRaf) return;
+  _scrollDriftRaf = requestAnimationFrame(() => {
+    _scrollDriftRaf = null;
+    _resetScrollDrift();
+  });
+}
+
+function _clearUiWorkTimers() {
+  if (_keyboardStateTimer) { clearTimeout(_keyboardStateTimer); _keyboardStateTimer = null; }
+  if (_appHeightSyncTimer) { clearTimeout(_appHeightSyncTimer); _appHeightSyncTimer = null; }
+  if (_visualViewportResizeTimer) { clearTimeout(_visualViewportResizeTimer); _visualViewportResizeTimer = null; }
+  if (_scrollDriftRaf) { cancelAnimationFrame(_scrollDriftRaf); _scrollDriftRaf = null; }
+  if (toastTimer) {
+    clearTimeout(toastTimer);
+    toastTimer = null;
+    const t = DOM['toast'];
+    if (t) t.classList.remove('show');
+  }
+  if (_pwaBannerHideTimer) { clearTimeout(_pwaBannerHideTimer); _pwaBannerHideTimer = null; }
+  if (_pwaBannerShowTimer) { clearTimeout(_pwaBannerShowTimer); _pwaBannerShowTimer = null; }
+  const banner = document.getElementById('pwa-banner');
+  if (banner) banner.classList.remove('visible');
+}
 
 function _isEditableElement(el) {
   if (!el) return false;
@@ -6705,7 +6811,7 @@ function _isEditableElement(el) {
 function _setKeyboardOpen(open) {
   _keyboardOpen = !!open;
   document.body.classList.toggle('keyboard-open', _keyboardOpen);
-  if (!_keyboardOpen) _stableAppHeight = window.innerHeight;
+  if (!_keyboardOpen) _stableAppHeight = _getViewportHeight();
   _fixAppHeight();
 }
 
@@ -6714,11 +6820,11 @@ function _updateKeyboardViewportState() {
   const hasEditableFocus = _isEditableElement(active);
   const vv = window.visualViewport;
   const vvHeight = vv ? vv.height : window.innerHeight;
-  const keyboardDelta = Math.max(0, window.innerHeight - vvHeight);
+  const keyboardDelta = Math.max(0, _getViewportHeight() - vvHeight);
   const keyboardLikelyOpen = hasEditableFocus && keyboardDelta > 120;
 
   if (keyboardLikelyOpen) {
-    _stableAppHeight = Math.max(_stableAppHeight, window.innerHeight);
+    _stableAppHeight = Math.max(_stableAppHeight, _getViewportHeight());
     _setKeyboardOpen(true);
     return;
   }
@@ -6734,7 +6840,7 @@ function _resetScrollDrift() {
 
 function _applyViewportFix() {
   _setKeyboardOpen(false);
-  requestAnimationFrame(_resetScrollDrift);
+  _scheduleScrollDriftReset();
 }
 
 // Inmediato al parsear el script
@@ -6754,10 +6860,21 @@ document.addEventListener('visibilitychange', () => {
       clearInterval(challengeTotalTimerInterval);
       challengeTotalTimerInterval = null;
     }
+    if (challengeCountdownActive) {
+      _challengeCountdownRestartPending = true;
+      resetChallengeCountdownOverlay();
+    }
+    _clearUiWorkTimers();
+    if (_saveDBTimer) saveDBNow();
     // Suspend AudioContext to release audio hardware
     if (_audioCtx && _audioCtx.state === 'running') _audioCtx.suspend();
   } else {
     _applyViewportFix();
+    if (_challengeCountdownRestartPending && currentScreen === 'screen-challenge' && !challengeFinished && challengeScore === 0) {
+      _challengeCountdownRestartPending = false;
+      startChallengeCountdown(challengeMode);
+      return;
+    }
     // Resume AudioContext if sound is enabled
     if (_soundEnabled && _audioCtx && _audioCtx.state === 'suspended') _audioCtx.resume();
   }
@@ -6766,7 +6883,7 @@ document.addEventListener('visibilitychange', () => {
 // Rotación o resize (también cubre apertura/cierre del teclado)
 window.addEventListener('resize', () => {
   _updateKeyboardViewportState();
-  _fixAppHeight();
+  _scheduleAppHeightSync();
   // No reseteamos scroll en resize genérico para no interferir con el
   // teclado virtual; solo en visualViewport donde sabemos que no hay
   // contenido que deba conservar su posición.
@@ -6775,8 +6892,13 @@ window.addEventListener('resize', () => {
 // visualViewport: teclado iOS
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', () => {
-    _updateKeyboardViewportState();
-    if (!_keyboardOpen) requestAnimationFrame(_resetScrollDrift);
+    if (_visualViewportResizeTimer) clearTimeout(_visualViewportResizeTimer);
+    _visualViewportResizeTimer = setTimeout(() => {
+      _visualViewportResizeTimer = null;
+      _updateKeyboardViewportState();
+      _scheduleAppHeightSync();
+      if (!_keyboardOpen) _scheduleScrollDriftReset();
+    }, 80);
   }, { passive: true });
 }
 
@@ -6789,7 +6911,8 @@ document.addEventListener('focusout', () => {
   if (_keyboardStateTimer) clearTimeout(_keyboardStateTimer);
   _keyboardStateTimer = setTimeout(() => {
     _updateKeyboardViewportState();
-    if (!_keyboardOpen) requestAnimationFrame(_resetScrollDrift);
+    _scheduleAppHeightSync();
+    if (!_keyboardOpen) _scheduleScrollDriftReset();
   }, 180);
 }, true);
 
@@ -6798,11 +6921,15 @@ const PWA_DISMISSED_KEY = 'aprendix_pwa_dismissed';
 
 function showPwaBanner(hint) {
   const banner = document.getElementById('pwa-banner');
-  if (!banner || localStorage.getItem(PWA_DISMISSED_KEY)) return;
+  if (!banner || localStorage.getItem(PWA_DISMISSED_KEY) || _powerSaveEnabled) return;
   if (hint) document.getElementById('pwa-banner-hint').textContent = hint;
   banner.classList.add('visible');
   // Auto-hide after 12s
-  setTimeout(() => banner.classList.remove('visible'), 12000);
+  if (_pwaBannerHideTimer) clearTimeout(_pwaBannerHideTimer);
+  _pwaBannerHideTimer = setTimeout(() => {
+    _pwaBannerHideTimer = null;
+    banner.classList.remove('visible');
+  }, 12000);
 }
 
 function dismissPwaBanner() {
@@ -6827,7 +6954,11 @@ window.addEventListener('beforeinstallprompt', e => {
       }
     };
   }
-  setTimeout(() => showPwaBanner('Toca para instalar Aprendix'), 3000);
+  if (_pwaBannerShowTimer) clearTimeout(_pwaBannerShowTimer);
+  _pwaBannerShowTimer = setTimeout(() => {
+    _pwaBannerShowTimer = null;
+    showPwaBanner('Toca para instalar Aprendix');
+  }, 3000);
 });
 
 // iOS Safari: detect and show instructions
@@ -6836,7 +6967,11 @@ window.addEventListener('beforeinstallprompt', e => {
   const isStandalone = window.navigator.standalone === true
     || window.matchMedia('(display-mode: standalone)').matches;
   if (isIOS && !isStandalone) {
-    setTimeout(() => showPwaBanner('Pulsa  y luego "Añadir a inicio"'), 4000);
+    if (_pwaBannerShowTimer) clearTimeout(_pwaBannerShowTimer);
+    _pwaBannerShowTimer = setTimeout(() => {
+      _pwaBannerShowTimer = null;
+      showPwaBanner('Pulsa  y luego "Añadir a inicio"');
+    }, 4000);
   }
 })();
 
