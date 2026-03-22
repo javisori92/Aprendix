@@ -45,6 +45,8 @@
     --radius-sm: 10px;
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --nav-base-height: 60px;
+    --nav-height: calc(var(--nav-base-height) + var(--safe-bottom));
   }
 
   /* ── LIGHT THEME ── */
@@ -75,7 +77,9 @@
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
   html, body {
+    width: 100%;
     height: 100%;
+    min-height: 100%;
     margin: 0; padding: 0;
     overflow: hidden; /* NEVER scroll at body level */
     overscroll-behavior: none; /* prevent iOS bounce affecting nav */
@@ -87,6 +91,8 @@
     font-family: 'Sora', sans-serif;
     background: var(--bg);
     color: var(--text);
+    position: fixed;
+    inset: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -95,7 +101,11 @@
        reflect the true window.innerHeight in iOS PWA standalone mode.
        Fallback to 100dvh for non-JS / first paint. */
     height: var(--app-height, 100dvh);
+    min-height: var(--app-height, 100dvh);
     max-height: var(--app-height, 100dvh);
+    overscroll-behavior: none;
+  }
+  body.keyboard-open {
     overscroll-behavior: none;
   }
 
@@ -103,6 +113,8 @@
   #app-screens {
     flex: 1;
     position: relative;
+    width: 100%;
+    min-width: 0;
     overflow: hidden;
     min-height: 0;
   }
@@ -123,7 +135,7 @@
     overflow-y: auto; overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain; /* prevent scroll from leaking to body */
-    padding: calc(var(--safe-top) + 12px) 18px calc(60px + env(safe-area-inset-bottom, 0px));
+    padding: calc(var(--safe-top) + 12px) 18px var(--nav-height);
     opacity: 0; pointer-events: none;
     transform: translateY(20px);
     transition: opacity .3s ease, transform .3s ease;
@@ -144,7 +156,8 @@
     position: fixed;
     bottom: 0; left: 0; right: 0;
     width: 100%;
-    height: calc(60px + env(safe-area-inset-bottom, 0px));
+    height: var(--nav-height);
+    min-height: var(--nav-height);
     z-index: 200;
     background: rgba(13,13,20,0.97);
     backdrop-filter: saturate(180%) blur(20px);
@@ -152,10 +165,16 @@
     border-top: 1px solid rgba(255,255,255,0.07);
     display: flex;
     align-items: flex-start;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: var(--safe-bottom);
     box-sizing: border-box;
     transition: opacity .2s ease;
     will-change: transform;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+  body.keyboard-open .bottom-nav {
+    opacity: 0 !important;
+    pointer-events: none !important;
   }
   .nav-btn {
     flex: 1; display: flex; flex-direction: column;
@@ -169,7 +188,7 @@
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     user-select: none; -webkit-user-select: none;
-    height: 60px;
+    height: var(--nav-base-height);
   }
   .nav-btn:active { transform: scale(0.9); }
   .nav-btn svg { width: 24px; height: 24px; margin-bottom: 3px; }
@@ -6667,8 +6686,44 @@ document.addEventListener('touchstart', function(e) {
 //  3. También en el resize del visualViewport (teclado).
 
 function _fixAppHeight() {
-  const h = window.innerHeight;
+  const h = _keyboardOpen ? _stableAppHeight : window.innerHeight;
   document.documentElement.style.setProperty('--app-height', h + 'px');
+}
+
+let _stableAppHeight = window.innerHeight;
+let _keyboardOpen = false;
+let _keyboardStateTimer = null;
+
+function _isEditableElement(el) {
+  if (!el) return false;
+  if (el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true;
+  if (el.tagName !== 'INPUT') return !!el.isContentEditable;
+  const type = (el.type || 'text').toLowerCase();
+  return !['button','checkbox','color','file','hidden','image','radio','range','reset','submit'].includes(type);
+}
+
+function _setKeyboardOpen(open) {
+  _keyboardOpen = !!open;
+  document.body.classList.toggle('keyboard-open', _keyboardOpen);
+  if (!_keyboardOpen) _stableAppHeight = window.innerHeight;
+  _fixAppHeight();
+}
+
+function _updateKeyboardViewportState() {
+  const active = document.activeElement;
+  const hasEditableFocus = _isEditableElement(active);
+  const vv = window.visualViewport;
+  const vvHeight = vv ? vv.height : window.innerHeight;
+  const keyboardDelta = Math.max(0, window.innerHeight - vvHeight);
+  const keyboardLikelyOpen = hasEditableFocus && keyboardDelta > 120;
+
+  if (keyboardLikelyOpen) {
+    _stableAppHeight = Math.max(_stableAppHeight, window.innerHeight);
+    _setKeyboardOpen(true);
+    return;
+  }
+
+  _setKeyboardOpen(false);
 }
 
 function _resetScrollDrift() {
@@ -6678,7 +6733,7 @@ function _resetScrollDrift() {
 }
 
 function _applyViewportFix() {
-  _fixAppHeight();
+  _setKeyboardOpen(false);
   requestAnimationFrame(_resetScrollDrift);
 }
 
@@ -6710,6 +6765,7 @@ document.addEventListener('visibilitychange', () => {
 
 // Rotación o resize (también cubre apertura/cierre del teclado)
 window.addEventListener('resize', () => {
+  _updateKeyboardViewportState();
   _fixAppHeight();
   // No reseteamos scroll en resize genérico para no interferir con el
   // teclado virtual; solo en visualViewport donde sabemos que no hay
@@ -6719,10 +6775,23 @@ window.addEventListener('resize', () => {
 // visualViewport: teclado iOS
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', () => {
-    _fixAppHeight();
-    requestAnimationFrame(_resetScrollDrift);
+    _updateKeyboardViewportState();
+    if (!_keyboardOpen) requestAnimationFrame(_resetScrollDrift);
   }, { passive: true });
 }
+
+document.addEventListener('focusin', () => {
+  if (_keyboardStateTimer) clearTimeout(_keyboardStateTimer);
+  _keyboardStateTimer = setTimeout(_updateKeyboardViewportState, 60);
+}, true);
+
+document.addEventListener('focusout', () => {
+  if (_keyboardStateTimer) clearTimeout(_keyboardStateTimer);
+  _keyboardStateTimer = setTimeout(() => {
+    _updateKeyboardViewportState();
+    if (!_keyboardOpen) requestAnimationFrame(_resetScrollDrift);
+  }, 180);
+}, true);
 
 let _deferredPrompt = null;
 const PWA_DISMISSED_KEY = 'aprendix_pwa_dismissed';
