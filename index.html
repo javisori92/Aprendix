@@ -4855,11 +4855,32 @@ function showConfirm(title, msg, onOk, okLabel, onCancel, cancelLabel) {
 
 // Close modals on overlay click
 document.querySelectorAll('.modal-overlay').forEach(m => {
-  if (m.id === 'modal-tiempo') return;
+  if (m.id === 'modal-tiempo' || m.id === 'modal-challenge-countdown') return;
   m.addEventListener('click', e => {
     if (e.target === m) closeModal(m.id);
   });
 });
+
+const challengeCountdownOverlay = document.getElementById('modal-challenge-countdown');
+if (challengeCountdownOverlay) {
+  challengeCountdownOverlay.addEventListener('click', e => {
+    if (!challengeCountdownActive) return;
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  challengeCountdownOverlay.addEventListener('pointerdown', e => {
+    if (!challengeCountdownActive) return;
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  ['touchstart', 'touchend'].forEach(type => {
+    challengeCountdownOverlay.addEventListener(type, e => {
+      if (!challengeCountdownActive) return;
+      e.preventDefault();
+      e.stopPropagation();
+    }, { passive: false });
+  });
+}
 
 // ══════════════════════════════════════════════
 //  TOAST
@@ -5519,6 +5540,18 @@ let challengeTotalTimerInterval = null;
 let challengeTotalTimeLeft = 60;
 let challengePerQTimeLeft = 0;
 let challengeAnswerLog = []; // [{q, correct}] — per-question results for stats
+let challengeCountdownActive = false;
+let challengeCountdownTimeout = null;
+
+function resetChallengeCountdownOverlay() {
+  challengeCountdownActive = false;
+  if (challengeCountdownTimeout) {
+    clearTimeout(challengeCountdownTimeout);
+    challengeCountdownTimeout = null;
+  }
+  const overlay = document.getElementById('modal-challenge-countdown');
+  if (overlay) overlay.classList.remove('open');
+}
 
 function goChallenge() {
   if (db.questions.length === 0) {
@@ -5535,6 +5568,7 @@ function goChallenge() {
 }
 
 function startChallengeCountdown(mode) {
+  resetChallengeCountdownOverlay();
   challengeMode = mode || 'normal';
   closeModal('modal-challenge-intro');
 
@@ -5587,6 +5621,7 @@ function startChallengeCountdown(mode) {
   const overlay = document.getElementById('modal-challenge-countdown');
   const textEl = document.getElementById('countdown-text');
   const subEl = document.getElementById('countdown-sub');
+  challengeCountdownActive = true;
   overlay.classList.add('open');
 
   const modeSubtitles = { normal: '¡Sin fallar!', extremo: '¡6 seg. por pregunta!', contrarreloj: '¡1 minuto!' };
@@ -5599,8 +5634,9 @@ function startChallengeCountdown(mode) {
 
   let i = 0;
   function showStep() {
+    if (!challengeCountdownActive) return;
     if (i >= steps.length) {
-      overlay.classList.remove('open');
+      resetChallengeCountdownOverlay();
       if (challengeMode === 'contrarreloj') startContrarrelojTimer();
       renderChallengeQuestion();
       return;
@@ -5613,7 +5649,7 @@ function startChallengeCountdown(mode) {
     subEl.textContent = s.sub;
     void textEl.offsetWidth;
     textEl.className = 'countdown-num';
-    setTimeout(showStep, i === steps.length ? 900 : 800);
+    challengeCountdownTimeout = setTimeout(showStep, i === steps.length ? 900 : 800);
   }
   showStep();
 }
@@ -5857,6 +5893,7 @@ function showChallengeFail(failedQ) {
 function finishChallenge(failedQ) {
   if (challengeFinished) return;
   challengeFinished = true;
+  resetChallengeCountdownOverlay();
   stopExtremoPerQTimer();
   if (challengeTotalTimerInterval) { clearInterval(challengeTotalTimerInterval); challengeTotalTimerInterval = null; }
 
@@ -6031,6 +6068,7 @@ function recordReviewRoundStats(queue, results) {
 
 function confirmAbortChallenge() {
   showConfirm('¿Abandonar desafío?', `Llevas ${challengeScore} pregunta${challengeScore === 1 ? '' : 's'} correctas. Se perderá tu progreso.`, () => {
+    resetChallengeCountdownOverlay();
     stopExtremoPerQTimer();
     if (challengeTotalTimerInterval) { clearInterval(challengeTotalTimerInterval); challengeTotalTimerInterval = null; }
     goHome();
