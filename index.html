@@ -99,10 +99,10 @@
     font-size: 15px;
      /* --app-height is set by JS on every load/resize/pageshow to track
        the tallest stable visible viewport on iPhone/iOS PWA startup.
-       Fallback to 100svh for first paint. */
-     height: var(--app-height, 100svh);
-     min-height: var(--app-height, 100svh);
-     max-height: var(--app-height, 100svh);
+       Fallback to 100dvh for first paint to avoid a short initial viewport. */
+     height: var(--app-height, 100dvh);
+     min-height: var(--app-height, 100dvh);
+     max-height: var(--app-height, 100dvh);
     overscroll-behavior: none;
   }
   body.keyboard-open {
@@ -6766,11 +6766,20 @@ function _fixAppHeight() {
 // quede exactamente adherido al borde inferior visible de la pantalla.
 function _syncNavBottom() {
   const nav = document.getElementById('bottom-nav');
-  if (!nav || _keyboardOpen) return;
+  if (!nav) return;
+  if (_keyboardOpen) {
+    nav.style.bottom = '';
+    return;
+  }
   const vv = window.visualViewport;
-  if (!vv) return;
+  if (!vv) {
+    nav.style.bottom = '';
+    return;
+  }
   const offset = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
-  nav.style.bottom = offset > 0 ? offset + 'px' : '';
+  const safeBottom = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-bottom')) || 0;
+  const adjusted = Math.max(0, Math.round(offset - safeBottom));
+  nav.style.bottom = adjusted > 1 ? adjusted + 'px' : '';
 }
 
 let _stableAppHeight = 0;
