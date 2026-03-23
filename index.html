@@ -6773,7 +6773,7 @@ function _syncNavBottom() {
   nav.style.bottom = offset > 0 ? offset + 'px' : '';
 }
 
-let _stableAppHeight = _getViewportHeight();
+let _stableAppHeight = 0;
 let _keyboardOpen = false;
 let _keyboardStateTimer = null;
 let _appHeightSyncTimer = null;
@@ -6855,16 +6855,26 @@ function _resetScrollDrift() {
 }
 
 function _applyViewportFix() {
+  // On app open / return-from-background: reset keyboard state with
+  // a fresh viewport baseline before any deferred visualViewport updates.
+  _stableAppHeight = _getViewportHeight();
   _setKeyboardOpen(false);
   _scheduleScrollDriftReset();
 }
 
+function _stabilizeViewportOnOpen() {
+  _applyViewportFix();
+  // iOS can settle viewport metrics in multiple phases on startup.
+  setTimeout(_applyViewportFix, 120);
+  setTimeout(_applyViewportFix, 380);
+}
+
 // Inmediato al parsear el script
-_applyViewportFix();
+_stabilizeViewportOnOpen();
 
 // Cada vez que la app se muestra (primera vez, segundo lanzamiento, vuelta
 // desde otra app). 'pageshow' se dispara incluso con bfcache.
-window.addEventListener('pageshow', _applyViewportFix);
+window.addEventListener('pageshow', _stabilizeViewportOnOpen);
 
 // Cuando el usuario vuelve a la pestaña/app tras minimizarla
 document.addEventListener('visibilitychange', () => {
