@@ -6755,6 +6755,22 @@ function _getViewportHeight() {
 function _fixAppHeight() {
   const h = _keyboardOpen ? _stableAppHeight : _getViewportHeight();
   document.documentElement.style.setProperty('--app-height', h + 'px');
+  _syncNavBottom();
+}
+
+// ── iOS visual-viewport nav anchor ──────────────────────────────────────────
+// En iOS, position:fixed; bottom:0 puede no coincidir con el borde inferior
+// visible (p.ej. cuando la barra de Safari está presente o hay scroll drift).
+// Calculamos el offset real entre el viewport de layout y el visual viewport
+// y lo aplicamos como bottom del nav, de modo que su borde inferior siempre
+// quede exactamente adherido al borde inferior visible de la pantalla.
+function _syncNavBottom() {
+  const nav = document.getElementById('bottom-nav');
+  if (!nav || _keyboardOpen) return;
+  const vv = window.visualViewport;
+  if (!vv) return;
+  const offset = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+  nav.style.bottom = offset > 0 ? offset + 'px' : '';
 }
 
 let _stableAppHeight = _getViewportHeight();
@@ -6889,7 +6905,7 @@ window.addEventListener('resize', () => {
   // contenido que deba conservar su posición.
 });
 
-// visualViewport: teclado iOS
+// visualViewport: teclado iOS + anclaje del nav al borde inferior visible
 if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', () => {
     if (_visualViewportResizeTimer) clearTimeout(_visualViewportResizeTimer);
@@ -6897,8 +6913,12 @@ if (window.visualViewport) {
       _visualViewportResizeTimer = null;
       _updateKeyboardViewportState();
       _scheduleAppHeightSync();
-      if (!_keyboardOpen) _scheduleScrollDriftReset();
+      if (!_keyboardOpen) { _scheduleScrollDriftReset(); _syncNavBottom(); }
     }, 80);
+  }, { passive: true });
+  // scroll del visual viewport (scroll drift en iOS Safari)
+  window.visualViewport.addEventListener('scroll', () => {
+    if (!_keyboardOpen) _syncNavBottom();
   }, { passive: true });
 }
 
