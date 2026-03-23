@@ -6860,6 +6860,7 @@ function _applyViewportFix() {
   _stableAppHeight = _getViewportHeight();
   _setKeyboardOpen(false);
   _scheduleScrollDriftReset();
+  _fixAppHeight(); // Ensure nav is synced immediately
 }
 
 function _stabilizeViewportOnOpen() {
