@@ -45,7 +45,9 @@
     --radius-sm: 10px;
     --safe-top: env(safe-area-inset-top, 0px);
     --safe-bottom: env(safe-area-inset-bottom, 0px);
-    --real-safe-bottom: env(safe-area-inset-bottom, 0px); /* refined by JS on iOS 26 */
+    /* --real-safe-bottom is overridden by JS with a measured *pixel* value.
+       Falls back to env() for the initial paint before JS runs. */
+    --real-safe-bottom: env(safe-area-inset-bottom, 0px);
     --nav-base-height: 60px;
     --nav-height: calc(var(--nav-base-height) + var(--real-safe-bottom));
   }
@@ -163,14 +165,15 @@
     transition: opacity .2s ease, transform .2s ease;
   }
 
-  /* ── BOTTOM FILL — color bleed below nav to prevent black gap on iOS 26 ── */
+  /* ── BOTTOM FILL — color bleed behind nav to prevent any black gap on iOS 26 ──
+     200px height ensures it covers nav + home indicator regardless of
+     whether viewport-fit:cover is active or not. Nav (z-index:200) sits on top. */
   #bottom-fill {
     position: fixed;
     bottom: 0; left: 0; right: 0;
-    /* Covers the home indicator zone whether inside or outside the CSS viewport */
-    height: max(env(safe-area-inset-bottom, 0px), 34px);
-    background: rgb(13, 13, 20);
-    z-index: 199; /* just below nav */
+    height: 200px;
+    background: #0d0d14;
+    z-index: 198;
     pointer-events: none;
     transform: translateZ(0);
   }
@@ -181,14 +184,14 @@
     position: fixed;
     bottom: 0; left: 0; right: 0;
     width: 100%;
-    height: calc(60px + var(--real-safe-bottom, env(safe-area-inset-bottom, 0px)));
-    min-height: calc(60px + var(--real-safe-bottom, env(safe-area-inset-bottom, 0px)));
+    height: var(--nav-height);
+    min-height: var(--nav-height);
     z-index: 200;
-    background: rgb(13, 13, 20);
+    background: #0d0d14;
     border-top: 1px solid rgba(255,255,255,0.07);
     display: flex;
     align-items: flex-start;
-    padding-bottom: var(--real-safe-bottom, env(safe-area-inset-bottom, 0px));
+    padding-bottom: var(--real-safe-bottom);
     box-sizing: border-box;
     transition: opacity .2s ease;
     will-change: transform;
@@ -198,6 +201,7 @@
   body.nav-visible:not(.keyboard-open) .bottom-nav {
     backdrop-filter: saturate(180%) blur(20px);
     -webkit-backdrop-filter: saturate(180%) blur(20px);
+    /* Keep opaque base so blur doesn't expose gaps */
     background: rgba(13,13,20,0.97);
   }
   body.power-save .bottom-nav,
@@ -6766,7 +6770,9 @@ document.addEventListener('touchstart', function(e) {
 // En iOS standalone (PWA), window.scrollY puede quedar con un valor distinto
 // de 0 al reabrir la app por segunda vez, desplazando el bottom-nav hacia
 // arriba. La solución es:
-//  1. Usar una medida robusta del viewport en lugar de 100dvh.
+//  1. Medir env(safe-area-inset-bottom) con un probe element (getBoundingClientRect
+//     da el valor px calculado; getPropertyValue de custom property devuelve el
+//     STRING crudo «env(...)» y parseFloat de él es NaN).
 //  2. Forzar window.scrollTo(0,0) en cada 'pageshow' y 'visibilitychange'.
 //  3. También en el resize del visualViewport (teclado).
 
@@ -6775,6 +6781,23 @@ function _getViewportHeight() {
   const vvHeight = vv ? Math.round(vv.height + vv.offsetTop) : 0;
   const docHeight = document.documentElement ? document.documentElement.clientHeight : 0;
   return Math.max(window.innerHeight || 0, vvHeight, docHeight);
+}
+
+// Reads env(safe-area-inset-bottom) as a real pixel number.
+// Using height:env() on a probe element and reading getBoundingClientRect is the
+// only reliable way — getComputedStyle on a CSS custom property that contains
+// env() returns the raw string, not the resolved px value.
+function _measureSafeAreaBottom() {
+  const probe = document.createElement('div');
+  probe.setAttribute('aria-hidden', 'true');
+  probe.style.cssText =
+    'position:fixed;bottom:0;left:0;width:1px;' +
+    'height:env(safe-area-inset-bottom,0px);' +
+    'visibility:hidden;pointer-events:none;z-index:-1;';
+  document.body.appendChild(probe);
+  const h = Math.round(probe.getBoundingClientRect().height);
+  document.body.removeChild(probe);
+  return h;
 }
 
 function _fixAppHeight() {
@@ -6792,41 +6815,30 @@ function _fixAppHeight() {
 function _syncNavBottom() {
   const nav = document.getElementById('bottom-nav');
   if (!nav) return;
-
   if (_keyboardOpen) {
     nav.style.bottom = '';
-    nav.style.paddingBottom = '';
     return;
   }
 
+  // Method 1: probe element measures env(safe-area-inset-bottom) as real px.
+  const envMeasured = _measureSafeAreaBottom();
+
+  // Method 2: screen.height − innerHeight catches broken viewport-fit:cover.
+  // iPhone 11 portrait: screen.height=896 CSS px. If viewport-fit off → 862 → gap=34.
+  const screenGap = Math.min(60, Math.max(0,
+    Math.round(window.screen.height - window.innerHeight)));
+
+  // Use larger of the two measurements.
+  const safeBottom = Math.max(envMeasured, screenGap > 2 ? screenGap : 0);
+
+  // Set as plain px — never as 'env(…)' string via setProperty.
+  // iOS WebKit setProperty with an env() value string is unreliable.
+  document.documentElement.style.setProperty('--real-safe-bottom', safeBottom + 'px');
+
+  // Only fix scroll-drift (vv.offsetTop > 0 = viewport drifted, push nav up).
   const vv = window.visualViewport;
-
-  // ── Detect if the CSS viewport does NOT cover the physical screen bottom ────
-  // This happens when viewport-fit:cover is ignored/broken in iOS 26 PWA mode.
-  // iPhone 11 portrait: screen.height = 896px (CSS), home indicator = 34px.
-  // With viewport-fit:cover working:  window.innerHeight ≈ 896 → gap ≈ 0.
-  // With viewport-fit:cover broken:   window.innerHeight ≈ 862 → gap = 34.
-  // We use screen.height vs innerHeight because this PWA is portrait-locked.
-  const screenH = window.screen.height;
-  const gap = Math.min(Math.max(0, Math.round(screenH - window.innerHeight)), 60);
-
-  if (gap > 2) {
-    // viewport-fit:cover not active → push nav physically below CSS viewport
-    // bottom into the home indicator zone so it reaches the screen edge.
-    nav.style.bottom = '-' + gap + 'px';
-    nav.style.paddingBottom = gap + 'px';
-    document.documentElement.style.setProperty('--real-safe-bottom', gap + 'px');
-    return;
-  }
-
-  // viewport-fit:cover is active → CSS env(safe-area-inset-bottom) is correct.
-  // Clear inline overrides so CSS takes over, then fix scroll-drift only.
-  nav.style.bottom = '';
-  nav.style.paddingBottom = '';
-  document.documentElement.style.setProperty('--real-safe-bottom', 'env(safe-area-inset-bottom, 0px)');
-  if (vv && vv.offsetTop > 1) {
-    nav.style.bottom = Math.round(vv.offsetTop) + 'px';
-  }
+  const drift = vv ? Math.max(0, Math.round(vv.offsetTop)) : 0;
+  nav.style.bottom = drift > 1 ? drift + 'px' : '';
 }
 
 let _stableAppHeight = 0;
