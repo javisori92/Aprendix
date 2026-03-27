@@ -76,7 +76,18 @@
 
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
-  html, body {
+  html {
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    margin: 0; padding: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+    /* Match nav background so any sub-viewport gap is colour-matched, not black */
+    background: #0d0d14;
+    -webkit-user-select: none;
+  }
+  body {
     width: 100%;
     height: 100%;
     min-height: 100%;
@@ -97,12 +108,9 @@
     flex-direction: column;
     overflow: hidden;
     font-size: 15px;
-     /* --app-height is set by JS on every load/resize/pageshow to track
-       the tallest stable visible viewport on iPhone/iOS PWA startup.
-       Fallback to 100dvh for first paint to avoid a short initial viewport. */
-     height: var(--app-height, 100dvh);
-     min-height: var(--app-height, 100dvh);
-     max-height: var(--app-height, 100dvh);
+    /* inset:0 already constrains body to top:0 / bottom:0 (full viewport).
+       Explicit height declarations would override bottom:0 and shorten the
+       body, leaving a black gap at the bottom of iOS 26 PWA. Let inset do it. */
     overscroll-behavior: none;
   }
   body.keyboard-open {
@@ -172,6 +180,17 @@
     will-change: transform;
     transform: translateZ(0);
     backface-visibility: hidden;
+  }
+  /* Extend nav background below the logical viewport so any physical gap
+     between viewport-bottom and screen-bottom (iOS 26 PWA) is colour-filled */
+  .bottom-nav::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    bottom: -200px;
+    height: 200px;
+    background: rgba(13,13,20,0.97);
+    pointer-events: none;
   }
   body.nav-visible:not(.keyboard-open) .bottom-nav {
     backdrop-filter: saturate(180%) blur(20px);
@@ -6774,6 +6793,19 @@ function _syncNavBottom() {
   const vv = window.visualViewport;
   if (!vv) {
     nav.style.bottom = '';
+    return;
+  }
+  // In standalone / PWA mode (iOS 26+) the CSS `position:fixed; bottom:0` with
+  // `padding-bottom: env(safe-area-inset-bottom)` is already correct.
+  // Only adjust nav.bottom to compensate for true *scroll-drift* (vv.offsetTop > 0)
+  // and ignore viewport-height mismatches caused by new iOS system chrome which
+  // would otherwise pull the nav up and leave a black gap below it.
+  const isStandalone = (window.navigator.standalone === true) ||
+    window.matchMedia('(display-mode: standalone)').matches;
+  if (isStandalone) {
+    // In standalone mode trust CSS; only correct positive scroll-drift offset
+    const drift = Math.round(vv.offsetTop);
+    nav.style.bottom = drift > 1 ? drift + 'px' : '';
     return;
   }
   const offset = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
