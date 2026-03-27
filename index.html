@@ -163,34 +163,31 @@
     transition: opacity .2s ease, transform .2s ease;
   }
 
-  /* ── BOTTOM FILL — sits below nav, covers any gap between viewport-bottom
-     and physical screen-bottom on iOS 26 PWA (home indicator area) ── */
+  /* ── BOTTOM FILL — color bleed below nav to prevent black gap on iOS 26 ── */
   #bottom-fill {
     position: fixed;
-    left: 0; right: 0;
-    /* top is set dynamically by JS to = bottom of nav */
-    bottom: -300px; /* overshoots physical bottom so it always covers */
-    height: 300px;
-    background: rgba(13,13,20,0.97);
+    bottom: 0; left: 0; right: 0;
+    /* Covers the home indicator zone whether inside or outside the CSS viewport */
+    height: max(env(safe-area-inset-bottom, 0px), 34px);
+    background: rgb(13, 13, 20);
     z-index: 199; /* just below nav */
     pointer-events: none;
     transform: translateZ(0);
   }
+  body.keyboard-open #bottom-fill { display: none; }
 
   /* ── BOTTOM NAV — always anchored to bottom:0 ── */
   .bottom-nav {
     position: fixed;
     bottom: 0; left: 0; right: 0;
     width: 100%;
-    /* height = buttons (60px) + real safe-area-inset-bottom measured by JS via --real-safe-bottom */
     height: calc(60px + var(--real-safe-bottom, env(safe-area-inset-bottom, 0px)));
     min-height: calc(60px + var(--real-safe-bottom, env(safe-area-inset-bottom, 0px)));
     z-index: 200;
-    background: rgba(13,13,20,0.97);
+    background: rgb(13, 13, 20);
     border-top: 1px solid rgba(255,255,255,0.07);
     display: flex;
     align-items: flex-start;
-    padding-top: 0;
     padding-bottom: var(--real-safe-bottom, env(safe-area-inset-bottom, 0px));
     box-sizing: border-box;
     transition: opacity .2s ease;
@@ -198,19 +195,10 @@
     transform: translateZ(0);
     backface-visibility: hidden;
   }
-  /* Extend nav bg downward as extra insurance */
-  .bottom-nav::after {
-    content: '';
-    position: absolute;
-    left: 0; right: 0;
-    top: 100%;
-    height: 300px;
-    background: rgba(13,13,20,0.97);
-    pointer-events: none;
-  }
   body.nav-visible:not(.keyboard-open) .bottom-nav {
     backdrop-filter: saturate(180%) blur(20px);
     -webkit-backdrop-filter: saturate(180%) blur(20px);
+    background: rgba(13,13,20,0.97);
   }
   body.power-save .bottom-nav,
   body.power-save .modal-overlay.open,
@@ -6803,55 +6791,42 @@ function _fixAppHeight() {
 // quede exactamente adherido al borde inferior visible de la pantalla.
 function _syncNavBottom() {
   const nav = document.getElementById('bottom-nav');
-  const fill = document.getElementById('bottom-fill');
   if (!nav) return;
+
   if (_keyboardOpen) {
     nav.style.bottom = '';
     nav.style.paddingBottom = '';
-    if (fill) fill.style.display = 'none';
     return;
   }
 
-  // The gap between the bottom of position:fixed;bottom:0 and the physical edge
   const vv = window.visualViewport;
-  const layoutH = window.innerHeight;
-  const visualH = vv ? vv.height : layoutH;
-  const visualOffset = vv ? vv.offsetTop : 0;
 
-  // CSS env(safe-area-inset-bottom) via computed style
-  const cssEnvSafe = parseFloat(
-    getComputedStyle(document.documentElement).getPropertyValue('--safe-bottom')
-  ) || 0;
+  // ── Detect if the CSS viewport does NOT cover the physical screen bottom ────
+  // This happens when viewport-fit:cover is ignored/broken in iOS 26 PWA mode.
+  // iPhone 11 portrait: screen.height = 896px (CSS), home indicator = 34px.
+  // With viewport-fit:cover working:  window.innerHeight ≈ 896 → gap ≈ 0.
+  // With viewport-fit:cover broken:   window.innerHeight ≈ 862 → gap = 34.
+  // We use screen.height vs innerHeight because this PWA is portrait-locked.
+  const screenH = window.screen.height;
+  const gap = Math.min(Math.max(0, Math.round(screenH - window.innerHeight)), 60);
 
-  // On iOS 26 standalone, measure the gap between visual viewport bottom
-  // and innerHeight — this is the actual home indicator / system UI area
-  const isStandalone = (window.navigator.standalone === true) ||
-    window.matchMedia('(display-mode: standalone)').matches;
-
-  let realSafe;
-  if (isStandalone) {
-    // layoutH includes the home indicator zone; visualH excludes it.
-    // The difference is the area iOS draws below position:fixed;bottom:0.
-    const homeIndicatorGap = Math.max(0, Math.round(layoutH - visualH - visualOffset));
-    // Use whichever is larger: CSS env() or measured gap
-    realSafe = Math.max(cssEnvSafe, homeIndicatorGap);
-  } else {
-    realSafe = cssEnvSafe;
+  if (gap > 2) {
+    // viewport-fit:cover not active → push nav physically below CSS viewport
+    // bottom into the home indicator zone so it reaches the screen edge.
+    nav.style.bottom = '-' + gap + 'px';
+    nav.style.paddingBottom = gap + 'px';
+    document.documentElement.style.setProperty('--real-safe-bottom', gap + 'px');
+    return;
   }
 
-  // Clamp to sensible range (home indicator is ~34px on most iPhones)
-  realSafe = Math.min(Math.max(realSafe, 0), 80);
-
-  // Apply as CSS variable so --nav-height recalculates everywhere
-  document.documentElement.style.setProperty('--real-safe-bottom', realSafe + 'px');
-
-  // Keep nav at bottom:0 (CSS handles it), just update padding
+  // viewport-fit:cover is active → CSS env(safe-area-inset-bottom) is correct.
+  // Clear inline overrides so CSS takes over, then fix scroll-drift only.
   nav.style.bottom = '';
-  nav.style.paddingBottom = realSafe + 'px';
-
-  // The #bottom-fill element is always visible via CSS (bottom:-300px covers the gap)
-  // Just ensure it's not hidden after keyboard closes
-  if (fill) fill.style.display = '';
+  nav.style.paddingBottom = '';
+  document.documentElement.style.setProperty('--real-safe-bottom', 'env(safe-area-inset-bottom, 0px)');
+  if (vv && vv.offsetTop > 1) {
+    nav.style.bottom = Math.round(vv.offsetTop) + 'px';
+  }
 }
 
 let _stableAppHeight = 0;
