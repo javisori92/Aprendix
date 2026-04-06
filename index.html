@@ -3856,6 +3856,7 @@ function renameCategory() {
   input.placeholder = 'Nuevo nombre…';
   const modal = document.getElementById('modal-newcat');
   modal.querySelector('.modal-title').textContent = 'Renombrar categoría';
+  modal.querySelector('.btn-primary').textContent = 'Guardar';
   openModal('modal-newcat');
   setTimeout(() => { input.focus(); input.select(); }, 350);
 }
@@ -3871,6 +3872,7 @@ function renameSubcat() {
   input.placeholder = 'Nuevo nombre…';
   const modal = document.getElementById('modal-newcat');
   modal.querySelector('.modal-title').textContent = 'Renombrar subcategoría';
+  modal.querySelector('.btn-primary').textContent = 'Guardar';
   openModal('modal-newcat');
   setTimeout(() => { input.focus(); input.select(); }, 350);
 }
@@ -4458,8 +4460,7 @@ function saveNewCategory() {
     saveDB();
     closeModal('modal-newcat');
     currentEditorCat = name;
-    document.getElementById('editor-cat-title').textContent = name;
-    renderEditorCatSubcatList(name);
+    goEditor();
     showToast(`Renombrada a "${name}"`, 'success');
     return;
   }
@@ -4483,9 +4484,9 @@ function saveNewCategory() {
     invalidateQuestionIndex();
     saveDB();
     closeModal('modal-newcat');
+    document.getElementById('modal-newcat').querySelector('.btn-primary').textContent = 'Crear';
     currentEditorSubcat = name;
-    document.getElementById('editor-subcat-title').textContent = name;
-    renderEditorCatQuestions(cat, name);
+    renderEditorCatSubcatList(cat);
     showToast(`Renombrada a "${name}"`, 'success');
     return;
   }
@@ -4502,6 +4503,7 @@ function saveNewCategory() {
     input.dataset.mode = '';
     input.placeholder = 'Ej: Matemáticas, Historia…';
     document.getElementById('modal-newcat').querySelector('.modal-title').textContent = 'Nueva categoría';
+    document.getElementById('modal-newcat').querySelector('.btn-primary').textContent = 'Crear';
     // Refresh cat list so new subcat appears, then navigate into it
     renderEditorCatSubcatList(cat);
     showToast(`Subcategoría "${name}" creada`, 'success');
@@ -4515,6 +4517,8 @@ function saveNewCategory() {
     invalidateQuestionIndex();
     saveDB();
     closeModal('modal-newcat');
+    // Reset button label back to 'Crear' for next time
+    document.getElementById('modal-newcat').querySelector('.btn-primary').textContent = 'Crear';
     currentEditorCat = name;
     document.getElementById('editor-cat-title').textContent = name;
     renderEditorCatSubcatList(name);
