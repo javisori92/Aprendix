@@ -170,7 +170,14 @@
     box-sizing: border-box;
     transition: opacity .2s ease;
     will-change: transform;
-    transform: translateZ(0);
+    /* --viewport-cover-gap compensates for the iOS PWA bug where
+       viewport-fit=cover sets the coordinate origin at y=0 (behind the
+       status bar, hence safe-area-inset-top=48px) but does NOT extend
+       the CSS viewport height to screen.height. Result: bottom:0 lands
+       at y=848 instead of y=896 on iPhone 11, leaving a 48px black gap.
+       translateY pushes the GPU compositing layer below the CSS clip
+       boundary, which iOS renders correctly on-screen. */
+    transform: translateY(var(--viewport-cover-gap, 0px)) translateZ(0);
     backface-visibility: hidden;
   }
   body.nav-visible:not(.keyboard-open) .bottom-nav {
@@ -6894,11 +6901,42 @@ function _probeSafeAreaBottom() {
   document.body.appendChild(probe);
   const val = Math.round(parseFloat(getComputedStyle(probe).height) || 0);
   probe.parentNode.removeChild(probe);
-  // Only update cache when iOS has resolved a real value.
-  // Keeps _safeBottomPx=0 initially rather than caching a stale 0
-  // that would persist after iOS finally resolves the env().
   if (val > 0 || _safeBottomPx === 0) _safeBottomPx = val;
   return _safeBottomPx;
+}
+
+// ── Viewport-fit=cover gap probe ──────────────────────────────────────────────
+// iOS PWA bug: when apple-mobile-web-app-status-bar-style=black-translucent,
+// the CSS coordinate origin is placed at y=0 (top of physical screen, behind
+// the status bar — hence env(safe-area-inset-top)=48px on iPhone 11).
+// BUT the CSS viewport HEIGHT is only screen.height - statusBarHeight (848px
+// instead of 896px on iPhone 11). This means position:fixed;bottom:0 lands at
+// y=848 CSS = y=848 physical, leaving a 48px black gap to the screen bottom.
+//
+// Fix: measure the real CSS viewport height with a full-screen fixed probe.
+// If it's smaller than screen.height (in standalone mode), compute the gap and
+// set --viewport-cover-gap. The nav CSS uses translateY(var(--viewport-cover-gap))
+// to push its GPU compositing layer below the CSS clip boundary, which iOS WebKit
+// renders correctly on the physical screen even outside the CSS viewport.
+function _probeViewportCoverGap() {
+  const isStandalone = window.matchMedia('(display-mode:standalone)').matches ||
+    !!window.navigator.standalone;
+  if (!isStandalone) {
+    document.documentElement.style.setProperty('--viewport-cover-gap', '0px');
+    return;
+  }
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;top:0;bottom:0;left:0;width:0;' +
+    'pointer-events:none;visibility:hidden;';
+  document.body.appendChild(probe);
+  const cssVpH = Math.round(probe.getBoundingClientRect().height);
+  probe.parentNode.removeChild(probe);
+  const gap = Math.max(0, screen.height - cssVpH);
+  // Only set gap when it's in a plausible range (status bar heights: 20-60px).
+  // Avoids false positives from transient layout states during animations.
+  const plausible = gap >= 10 && gap <= 70;
+  document.documentElement.style.setProperty('--viewport-cover-gap',
+    plausible ? gap + 'px' : '0px');
 }
 
 function _applyViewportFix() {
@@ -6909,11 +6947,12 @@ function _applyViewportFix() {
   // buggy mode places the nav scrollY-px above the true screen bottom.
   // Clearing it synchronously eliminates any window for a wrong state.
   _resetScrollDrift();
-  // Step 2: probe safe area AFTER drift is cleared (layout is settled).
+  // Step 2: probe safe area and viewport cover gap AFTER drift is cleared.
   _probeSafeAreaBottom();
+  _probeViewportCoverGap();
   _stableAppHeight = _getViewportHeight();
   _setKeyboardOpen(false);
-  _scheduleScrollDriftReset(); // rAF safety-net in case sync scrollTo needs a tick
+  _scheduleScrollDriftReset();
   _fixAppHeight();
 }
 
@@ -6964,8 +7003,9 @@ document.addEventListener('visibilitychange', () => {
 // Rotación o resize (también cubre apertura/cierre del teclado)
 window.addEventListener('orientationchange', () => {
   setTimeout(() => {
-    _probeSafeAreaBottom(); // env(safe-area-inset-bottom) changes after rotation
-    _fixAppHeight();        // resync nav height with updated safe area value
+    _probeSafeAreaBottom();
+    _probeViewportCoverGap(); // screen dimensions change on rotation
+    _fixAppHeight();
   }, 300);
 });
 window.addEventListener('resize', () => {
@@ -7297,6 +7337,7 @@ initDomCache();
       'safeArea top:    ' + n(safeTop) + '\n' +
       '--safe-bottom:   ' + safeVar + '\n' +
       '--app-height:    ' + appH + '\n' +
+      '--cover-gap:     ' + (root.style.getPropertyValue('--viewport-cover-gap') || '(unset)') + '\n' +
       '─────────────────────────────────\n' +
       'nav.style.bot:   ' + navStyle  + '\n' +
       'nav.opacity:     ' + navOpacity+ '\n' +
