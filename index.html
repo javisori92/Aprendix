@@ -707,8 +707,11 @@
     position: fixed; inset: 0; z-index: 200;
     background: rgba(0,0,0,.7);
     display: flex; align-items: flex-end;
+    /* padding-bottom empuja el sheet hacia arriba cuando el teclado abre;
+       el valor lo calcula JS y lo guarda en --keyboard-height */
+    padding-bottom: var(--keyboard-height, 0px);
     opacity: 0; pointer-events: none;
-    transition: opacity .25s;
+    transition: opacity .25s, padding-bottom .2s ease;
   }
   .modal-overlay.open {
     opacity: 1; pointer-events: all;
@@ -6897,20 +6900,26 @@ function _setKeyboardOpen(open) {
   _keyboardOpen = !!open;
   document.body.classList.toggle('keyboard-open', _keyboardOpen);
   if (_keyboardOpen) {
-    // Ajustar el modal-sheet al área visible por encima del teclado
     const vv = window.visualViewport;
     if (vv) {
+      // Altura del teclado = espacio que falta entre el visual viewport y el layout viewport
       const visH = Math.round(vv.height);
-      document.documentElement.style.setProperty('--modal-sheet-max-h', visH + 'px');
+      const kbH  = Math.max(0, Math.round(_stableAppHeight || _getViewportHeight()) - visH);
+      // --keyboard-height: empuja el overlay hacia arriba para que el sheet
+      // quede justo encima del teclado (usando align-items:flex-end del overlay).
+      document.documentElement.style.setProperty('--keyboard-height', kbH + 'px');
+      // --modal-sheet-max-h: el sheet no puede ser más alto que el área visible.
+      document.documentElement.style.setProperty('--modal-sheet-max-h', (visH * 0.97) + 'px');
       document.documentElement.style.setProperty('--modal-sheet-pb', '16px');
-      // Desplazar el campo activo a la vista dentro de su contenedor scrollable
+      // Scroll del campo activo a la vista dentro del sheet scrollable
       const active = document.activeElement;
       if (active && _isEditableElement(active)) {
-        setTimeout(() => { active.scrollIntoView({ block: 'nearest' }); }, 50);
+        setTimeout(() => { active.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, 100);
       }
     }
   } else {
     _stableAppHeight = _getViewportHeight();
+    document.documentElement.style.removeProperty('--keyboard-height');
     document.documentElement.style.removeProperty('--modal-sheet-max-h');
     document.documentElement.style.removeProperty('--modal-sheet-pb');
   }
