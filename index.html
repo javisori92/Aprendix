@@ -901,9 +901,12 @@
     display: flex; align-items: center; justify-content: center;
     transition: all .2s;
   }
-  .sel-subcat-toggle.on { background: var(--accent3); border-color: var(--accent3); }
+  .sel-subcat-toggle.on  { background: var(--accent3); border-color: var(--accent3); }
+  .sel-subcat-toggle.auto { background: var(--surface3); border-color: var(--border); }
   .sel-subcat-toggle svg { width: 10px; height: 10px; color: var(--bg); }
+  .sel-subcat-toggle.auto svg { color: var(--text3); }
   .sel-subcat-name { font-size: 13px; color: var(--text2); flex: 1; }
+  .sel-subcat-row.auto .sel-subcat-name { color: var(--text3); }
   .sel-subcat-count { font-size: 11px; color: var(--text3); font-family: 'JetBrains Mono', monospace; }
 
   /* ── SORT CHIPS ── */
@@ -2689,6 +2692,57 @@ function goExamConfig(mode) {
 function renderSelectionList(containerId, sel, cats, onChange) {
   const container = document.getElementById(containerId);
   container.innerHTML = '';
+
+  // Re-syncs all subRows + cat count after any subcat state change.
+  // subcats===null → auto-all (gray); subcats=[...] → manual selection (green)
+  function _syncSubcatUI(subcatList, groups, sel, cat, countEl) {
+    const isAuto = sel[cat].subcats === null;
+    const SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.75l6 6 9-13.5"/></svg>';
+    subcatList.querySelectorAll('.sel-subcat-row').forEach((row, i) => {
+      const s = groups[i];
+      const isOn = isAuto || sel[cat].subcats.includes(s);
+      row.classList.remove('on', 'auto');
+      const toggle = row.querySelector('.sel-subcat-toggle');
+      toggle.classList.remove('on', 'auto');
+      if (isOn) {
+        row.classList.add(isAuto ? 'auto' : 'on');
+        toggle.classList.add(isAuto ? 'auto' : 'on');
+        toggle.innerHTML = SVG;
+      } else {
+        toggle.innerHTML = '';
+      }
+    });
+    if (countEl) {
+      const totalCount = getQuestionsByCat(cat).length;
+      const selCount = db.questions.filter(q => {
+        if (q.cat !== cat) return false;
+        return sel[cat].subcats === null || sel[cat].subcats.includes(q.subcat || '');
+      }).length;
+      countEl.textContent = selCount + '/' + totalCount;
+    }
+    if (onChange) onChange();
+  }
+
+  // Subcat tap logic:
+  //   all gray (null) + tap S  → exclusive: only S turns green
+  //   manual + tap green S     → deselect S; if 0 left → reset to all gray
+  //   manual + tap unselected S → add S (green); if all selected → reset to all gray
+  function _makeSubcatClick(s, groups, sel, cat, subcatList, countEl, e) {
+    e.stopPropagation();
+    if (sel[cat].subcats === null) {
+      // Auto-all gray → exclusive tap: only this one goes green
+      sel[cat].subcats = [s];
+    } else if (sel[cat].subcats.includes(s)) {
+      // Tap a green one → deselect it
+      sel[cat].subcats = sel[cat].subcats.filter(x => x !== s);
+      if (sel[cat].subcats.length === 0) sel[cat].subcats = null; // reset to auto-gray
+    } else {
+      // Tap an unselected one → add it (green)
+      sel[cat].subcats.push(s);
+    }
+    _syncSubcatUI(subcatList, groups, sel, cat, countEl);
+  }
+
   cats.forEach(cat => {
     const groups = getAllSubcatGroups([cat]);
     const catSel = sel[cat] || { selected: false, subcats: null };
@@ -2715,109 +2769,61 @@ function renderSelectionList(containerId, sel, cats, onChange) {
       <div class="sel-cat-name">${cat}</div>
       <div class="sel-cat-count">${catSel.selected ? selCount+'/'+totalCount : totalCount+' preg.'}</div>
     `;
-    
-    // ✅ OPTIMIZACIÓN: actualizar estado sin re-renderizar todo
+
+    const countEl = row.querySelector('.sel-cat-count');
+
     row.onclick = () => {
       const wasSelected = sel[cat].selected;
       sel[cat] = wasSelected ? { selected: false, subcats: null } : { selected: true, subcats: null };
-      // Actualizar SOLO este card
       card.className = 'sel-cat-card' + (sel[cat].selected ? ' has-selection' : '');
-      // Actualizar el toggle visual
       const toggle = row.querySelector('.sel-cat-toggle');
-      toggle.classList.toggle('on');
-      toggle.classList.toggle('partial', false);
+      toggle.className = 'sel-cat-toggle' + (sel[cat].selected ? ' on' : '');
       toggle.innerHTML = sel[cat].selected ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.75l6 6 9-13.5"/></svg>' : '';
-      // Actualizar contador
-      const count = row.querySelector('.sel-cat-count');
       if (sel[cat].selected) {
         const poolCount = db.questions.filter(q => q.cat === cat).length;
-        count.textContent = poolCount + '/' + totalCount;
-      } else {
-        count.textContent = totalCount + ' preg.';
-      }
-      // Si se seleccionó y hay subcats, mostrarlos
-      if (sel[cat].selected && groups.length > 1) {
-        if (!card.querySelector('.sel-subcat-list')) {
-          const subcatList = document.createElement('div');
-          subcatList.className = 'sel-subcat-list';
-          groups.forEach(s => {
-            const label = s === '' ? 'Sin subcategoría' : s;
-            const subCount = db.questions.filter(q => q.cat === cat && (q.subcat||'') === s).length;
-            const subRow = document.createElement('div');
-            subRow.className = 'sel-subcat-row on';
-            subRow.innerHTML = `
-              <div class="sel-subcat-toggle on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.75l6 6 9-13.5"/></svg></div>
-              <div class="sel-subcat-name">${label}</div>
-              <div class="sel-subcat-count">${subCount}</div>
-            `;
-            subRow.onclick = (e) => {
-              e.stopPropagation();
-              const wasIn = sel[cat].subcats === null || sel[cat].subcats.includes(s);
-              if (sel[cat].subcats === null) sel[cat].subcats = [...groups];
-              if (sel[cat].subcats.includes(s)) {
-                if (sel[cat].subcats.length > 1) sel[cat].subcats = sel[cat].subcats.filter(x => x !== s);
-                else return; // ✅ bloquear: no se puede deseleccionar la última, no cambiar UI
-              } else {
-                sel[cat].subcats.push(s);
-                if (sel[cat].subcats.length === groups.length) sel[cat].subcats = null;
-              }
-              const isNowIn = sel[cat].subcats === null || sel[cat].subcats.includes(s);
-              if (wasIn !== isNowIn) {
-                subRow.classList.toggle('on');
-                subRow.querySelector('.sel-subcat-toggle').classList.toggle('on');
-              }
-              if (onChange) onChange();
-            };
-            subcatList.appendChild(subRow);
-          });
+        countEl.textContent = poolCount + '/' + totalCount;
+        // Build subcat list if needed
+        if (groups.length > 1 && !card.querySelector('.sel-subcat-list')) {
+          const subcatList = _buildSubcatList(groups, sel, cat, countEl);
           card.appendChild(subcatList);
         }
-      } else if (card.querySelector('.sel-subcat-list')) {
-        // Si se deseleccionó, remover subcats
-        card.querySelector('.sel-subcat-list').remove();
+      } else {
+        countEl.textContent = totalCount + ' preg.';
+        const existing = card.querySelector('.sel-subcat-list');
+        if (existing) existing.remove();
       }
       if (onChange) onChange();
     };
     card.appendChild(row);
 
-    // Subcategory rows — only show if cat selected AND has more than 1 group
-    if (catSel.selected && groups.length > 1) {
+    function _buildSubcatList(groups, sel, cat, countEl) {
+      const SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.75l6 6 9-13.5"/></svg>';
       const subcatList = document.createElement('div');
       subcatList.className = 'sel-subcat-list';
       groups.forEach(s => {
         const label = s === '' ? 'Sin subcategoría' : s;
         const subCount = db.questions.filter(q => q.cat === cat && (q.subcat||'') === s).length;
-        const isOn = catSel.subcats === null || catSel.subcats.includes(s);
+        const isAuto = sel[cat].subcats === null;
+        const isOn   = isAuto || sel[cat].subcats.includes(s);
+        const stateClass = isOn ? (isAuto ? 'auto' : 'on') : '';
         const subRow = document.createElement('div');
-        subRow.className = 'sel-subcat-row' + (isOn ? ' on' : '');
+        subRow.className = 'sel-subcat-row' + (stateClass ? ' ' + stateClass : '');
         subRow.innerHTML = `
-          <div class="sel-subcat-toggle ${isOn ? 'on' : ''}">
-            ${isOn ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 12.75l6 6 9-13.5"/></svg>' : ''}
+          <div class="sel-subcat-toggle ${stateClass}">
+            ${isOn ? SVG : ''}
           </div>
           <div class="sel-subcat-name">${label}</div>
           <div class="sel-subcat-count">${subCount}</div>
         `;
-        subRow.onclick = (e) => {
-          e.stopPropagation();
-          const wasIn = sel[cat].subcats === null || sel[cat].subcats.includes(s);
-          if (sel[cat].subcats === null) sel[cat].subcats = [...groups];
-          if (sel[cat].subcats.includes(s)) {
-            if (sel[cat].subcats.length > 1) sel[cat].subcats = sel[cat].subcats.filter(x => x !== s);
-            else return; // ✅ bloquear: no se puede deseleccionar la última, no cambiar UI
-          } else {
-            sel[cat].subcats.push(s);
-            if (sel[cat].subcats.length === groups.length) sel[cat].subcats = null;
-          }
-          const isNowIn = sel[cat].subcats === null || sel[cat].subcats.includes(s);
-          if (wasIn !== isNowIn) {
-            subRow.classList.toggle('on');
-            subRow.querySelector('.sel-subcat-toggle').classList.toggle('on');
-          }
-          if (onChange) onChange();
-        };
+        subRow.onclick = (e) => _makeSubcatClick(s, groups, sel, cat, subcatList, countEl, e);
         subcatList.appendChild(subRow);
       });
-      card.appendChild(subcatList);
+      return subcatList;
+    }
+
+    // Subcategory rows — only show if cat selected AND has more than 1 group
+    if (catSel.selected && groups.length > 1) {
+      card.appendChild(_buildSubcatList(groups, sel, cat, countEl));
     }
     container.appendChild(card);
   });
@@ -5461,7 +5467,21 @@ function renderStats() {
   if (ctRecEl2) ctRecEl2.textContent = (st.challengeContrarrelojRecord || 0) > 0 ? `${st.challengeContrarrelojRecord} ⏱️` : '—';
 
   // Global accuracy
-  const qArr = Object.values(st.questions);
+  // Join st.questions con db.questions por ID para que cat/subcat refleje siempre el nombre actual
+  // aunque se haya renombrado después de guardar las estadísticas.
+  const _dbQMap = {};
+  if (typeof db !== 'undefined' && db.questions) {
+    db.questions.forEach(q => { _dbQMap[q.id] = q; });
+  }
+  const qArr = Object.entries(st.questions).map(([id, qs]) => {
+    const live = _dbQMap[id];
+    return {
+      ...qs,
+      id,
+      cat:    live ? (live.cat    || '?') : (qs.cat    || '?'),
+      subcat: live ? (live.subcat || '')  : (qs.subcat || '')
+    };
+  });
   const totalC = qArr.reduce((s,q) => s + q.correct, 0);
   const totalW = qArr.reduce((s,q) => s + q.wrong, 0);
   const totalA = totalC + totalW;
