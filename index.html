@@ -6798,11 +6798,11 @@ function _syncNavBottom() {
     return;
   }
   const offset = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
-  const safeBottom = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-bottom')) || 0;
-  const adjusted = Math.max(0, Math.round(offset - safeBottom));
+  const adjusted = Math.max(0, Math.round(offset - _safeBottomPx));
   nav.style.bottom = adjusted > 1 ? adjusted + 'px' : '';
 }
 
+let _safeBottomPx = 0;
 let _stableAppHeight = 0;
 let _keyboardOpen = false;
 let _keyboardStateTimer = null;
@@ -6885,20 +6885,23 @@ function _resetScrollDrift() {
 }
 
 // ── Safe-area probe ────────────────────────────────────────────────────────
-// getComputedStyle().getPropertyValue('--safe-bottom') returns the raw
-// string "env(safe-area-inset-bottom, 0px)" — not a number — so _syncNavBottom
-// always reads safeBottom=0 and miscorrects the nav on iPhone 11.
-// Fix: measure env() via a concrete CSS property on a probe element and write
-// the resolved pixel value back as --safe-bottom so JS reads it correctly.
+// Reads env(safe-area-inset-bottom) via a concrete CSS property on a probe
+// element (the only reliable JS way). Updates _safeBottomPx for _syncNavBottom.
+// IMPORTANT: does NOT override --safe-bottom on <html> — the CSS custom property
+// already uses env() natively and must NOT be replaced with 0 during early
+// startup (before iOS has resolved env() values), which would corrupt --nav-height.
 function _probeSafeAreaBottom() {
   const probe = document.createElement('div');
-  probe.style.cssText = 'position:fixed;pointer-events:none;opacity:0;' +
+  probe.style.cssText = 'position:fixed;pointer-events:none;opacity:0;visibility:hidden;' +
     'bottom:0;left:0;width:1px;height:env(safe-area-inset-bottom,0px);';
   document.body.appendChild(probe);
   const val = Math.round(parseFloat(getComputedStyle(probe).height) || 0);
   probe.parentNode.removeChild(probe);
-  document.documentElement.style.setProperty('--safe-bottom', val + 'px');
-  return val;
+  // Only update cache when iOS has resolved a real value.
+  // Keeps _safeBottomPx=0 initially rather than caching a stale 0
+  // that would persist after iOS finally resolves the env().
+  if (val > 0 || _safeBottomPx === 0) _safeBottomPx = val;
+  return _safeBottomPx;
 }
 
 function _applyViewportFix() {
@@ -6957,7 +6960,10 @@ document.addEventListener('visibilitychange', () => {
 
 // Rotación o resize (también cubre apertura/cierre del teclado)
 window.addEventListener('orientationchange', () => {
-  setTimeout(_probeSafeAreaBottom, 300); // env() value can change after rotation
+  setTimeout(() => {
+    _probeSafeAreaBottom(); // env(safe-area-inset-bottom) changes after rotation
+    _fixAppHeight();        // resync nav height with updated safe area value
+  }, 300);
 });
 window.addEventListener('resize', () => {
   _updateKeyboardViewportState();
@@ -7151,48 +7157,6 @@ initDomCache();
   const el = document.getElementById(id);
   if (el) { el.style.display = 'none'; el.classList.remove('active'); }
 });
-</script>
-
-<!-- ═══ VIEWPORT STABILIZER ═══ -->
-<script>
-  class ViewportStabilizer {
-    constructor() {
-      this.isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
-        window.navigator.standalone;
-      this.isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
-
-      if (this.isStandalone && this.isIOS) {
-        this.initEventListeners();
-        this.forceSyncCycle();
-      }
-    }
-
-    initEventListeners() {
-      window.addEventListener('resize', () => this.debounceSync());
-      window.addEventListener('orientationchange', () => {
-        setTimeout(() => this.forceSyncCycle(), 150);
-        setTimeout(() => this.forceSyncCycle(), 500);
-      });
-    }
-
-    debounceSync() {
-      clearTimeout(this.timeout);
-      this.timeout = setTimeout(() => this.forceSyncCycle(), 100);
-    }
-
-    forceSyncCycle() {
-      const rootBody = document.body;
-      const currentColor = window.getComputedStyle(rootBody).backgroundColor;
-      rootBody.style.backgroundColor = currentColor;
-
-      const rawInnerHeight = window.innerHeight;
-      document.documentElement.style.setProperty('--vh-absolute', `${rawInnerHeight * 0.01}px`);
-    }
-  }
-
-  if (typeof window !== 'undefined') {
-    window.addEventListener('load', () => new ViewportStabilizer());
-  }
 </script>
 
 <!-- ═══ PWA INSTALL BANNER ═══ -->
