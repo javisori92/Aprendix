@@ -7176,5 +7176,79 @@ initDomCache();
   <button class="pwa-close" onclick="dismissPwaBanner()" aria-label="Cerrar">×</button>
 </div>
 
+<!-- ═══ DEBUG OVERLAY ═══ -->
+<div id="dbg-overlay" style="
+  position:fixed;top:0;left:0;right:0;z-index:99999;
+  background:rgba(0,0,0,0.87);color:#0f0;
+  font:13px/1.6 'JetBrains Mono',monospace;
+  padding:10px 12px 8px;
+  border-bottom:2px solid #0f0;
+  touch-action:none;pointer-events:auto;
+  white-space:pre;
+">TAP ANYWHERE TO DISMISS\n—</div>
+<script>
+(function(){
+  const el = document.getElementById('dbg-overlay');
+  if (!el) return;
+
+  // Dismiss on tap
+  el.addEventListener('click', () => el.remove());
+
+  function px(v){ return typeof v === 'number' ? v.toFixed(1)+'px' : String(v); }
+
+  function readSafeAreaProbe(){
+    const p = document.createElement('div');
+    p.style.cssText='position:fixed;pointer-events:none;opacity:0;bottom:0;left:0;width:1px;height:env(safe-area-inset-bottom,0px);';
+    document.body.appendChild(p);
+    const h = parseFloat(getComputedStyle(p).height)||0;
+    p.remove();
+    return h;
+  }
+
+  function update(){
+    const vv  = window.visualViewport;
+    const nav = document.getElementById('bottom-nav');
+    const root= document.documentElement;
+
+    const innerH     = window.innerHeight;
+    const scrollY    = window.scrollY;
+    const vvH        = vv ? vv.height   : '—';
+    const vvOffTop   = vv ? vv.offsetTop: '—';
+    const vvOffLeft  = vv ? vv.offsetLeft:'—';
+    const drift      = vv ? Math.round(innerH - vv.height - vv.offsetTop) : '—';
+    const safeProbe  = readSafeAreaProbe();
+    const navBot     = nav ? (nav.style.bottom || '(css)') : '—';
+    const navH       = nav ? nav.getBoundingClientRect().height : '—';
+    const navRect    = nav ? nav.getBoundingClientRect() : null;
+    const navBottom  = navRect ? navRect.bottom : '—';
+    const appH       = root.style.getPropertyValue('--app-height') || '(unset)';
+    const standalone = window.matchMedia('(display-mode:standalone)').matches || !!navigator.standalone;
+    const ua         = navigator.userAgent.match(/iPhone|iPad|iPod/) ? 'iOS' : 'non-iOS';
+
+    el.textContent =
+      '  [TAP TO DISMISS]\n' +
+      '──────────────────────────────\n' +
+      'standalone:     ' + standalone + '  (' + ua + ')\n' +
+      'window.innerH:  ' + px(innerH) + '\n' +
+      'window.scrollY: ' + px(scrollY) + '\n' +
+      'vv.height:      ' + px(vvH) + '\n' +
+      'vv.offsetTop:   ' + px(vvOffTop) + '\n' +
+      'vv.offsetLeft:  ' + px(vvOffLeft) + '\n' +
+      'drift(calc):    ' + px(drift) + '\n' +
+      'safeArea probe: ' + px(safeProbe) + '\n' +
+      '--app-height:   ' + appH + '\n' +
+      'nav.style.bot:  ' + navBot + '\n' +
+      'nav height:     ' + px(navH) + '\n' +
+      'nav rect.bottom:' + px(navBottom) + '\n' +
+      'screenH:        ' + px(screen.height) + '\n' +
+      '──────────────────────────────';
+  }
+
+  update();
+  const tid = setInterval(update, 400);
+  el.addEventListener('click', () => clearInterval(tid), { once: true });
+})();
+</script>
+
 </body>
 </html>
