@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
 <!-- PWA / iOS -->
 <meta name="mobile-web-app-capable" content="yes">
@@ -1035,9 +1035,30 @@
     font-size:20px; cursor:pointer; padding:4px; flex-shrink:0;
     touch-action:manipulation;
   }
+
+  /* ── iOS Liquid Glass Override — forces native subsystem engagement ── */
+  .ios-liquid-glass-override {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: block;
+    z-index: -1;
+    width: 100vw;
+    height: 48px;
+    pointer-events: none;
+  }
+  .ios-subsystem-expander {
+    height: 100vh;
+    background-color: var(--bg);
+  }
 </style>
 </head>
 <body>
+
+<div class="ios-liquid-glass-override" aria-hidden="true">
+  <div class="ios-subsystem-expander"></div>
+</div>
 
 <div id="app-screens">
 <!-- ═══ SETUP SCREEN ═══ -->
@@ -7109,6 +7130,48 @@ initDomCache();
   const el = document.getElementById(id);
   if (el) { el.style.display = 'none'; el.classList.remove('active'); }
 });
+</script>
+
+<!-- ═══ VIEWPORT STABILIZER ═══ -->
+<script>
+  class ViewportStabilizer {
+    constructor() {
+      this.isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+        window.navigator.standalone;
+      this.isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+
+      if (this.isStandalone && this.isIOS) {
+        this.initEventListeners();
+        this.forceSyncCycle();
+      }
+    }
+
+    initEventListeners() {
+      window.addEventListener('resize', () => this.debounceSync());
+      window.addEventListener('orientationchange', () => {
+        setTimeout(() => this.forceSyncCycle(), 150);
+        setTimeout(() => this.forceSyncCycle(), 500);
+      });
+    }
+
+    debounceSync() {
+      clearTimeout(this.timeout);
+      this.timeout = setTimeout(() => this.forceSyncCycle(), 100);
+    }
+
+    forceSyncCycle() {
+      const rootBody = document.body;
+      const currentColor = window.getComputedStyle(rootBody).backgroundColor;
+      rootBody.style.backgroundColor = currentColor;
+
+      const rawInnerHeight = window.innerHeight;
+      document.documentElement.style.setProperty('--vh-absolute', `${rawInnerHeight * 0.01}px`);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('load', () => new ViewportStabilizer());
+  }
 </script>
 
 <!-- ═══ PWA INSTALL BANNER ═══ -->
