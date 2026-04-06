@@ -4444,6 +4444,10 @@ function saveNewCategory() {
       db.subcategories[name] = db.subcategories[oldCat];
       delete db.subcategories[oldCat];
     }
+    // Update stats entries so renderStats shows the new name
+    const stCat = loadStats();
+    Object.values(stCat.questions).forEach(qs => { if (qs.cat === oldCat) qs.cat = name; });
+    saveStats(stCat);
     invalidateQuestionIndex();
     saveDB();
     closeModal('modal-newcat');
@@ -4466,6 +4470,10 @@ function saveNewCategory() {
       const si = db.subcategories[cat].indexOf(oldSubcat);
       if (si >= 0) db.subcategories[cat][si] = name;
     }
+    // Update stats entries so renderStats shows the new name
+    const stSub = loadStats();
+    Object.values(stSub.questions).forEach(qs => { if (qs.cat === cat && qs.subcat === oldSubcat) qs.subcat = name; });
+    saveStats(stSub);
     invalidateQuestionIndex();
     saveDB();
     closeModal('modal-newcat');
@@ -5465,7 +5473,17 @@ function renderStats() {
   document.getElementById('st-total-wrong').textContent = `${totalW} falladas`;
 
   // Por categoría (con subcategorías)
+  // Seed desde db.questions para que aparezcan todas las subcats aunque no tengan respuestas aún
   const catMap = {};
+  if (typeof db !== 'undefined' && db.questions) {
+    db.questions.forEach(q => {
+      const cat = q.cat || '?';
+      const subcat = q.subcat || '';
+      if (!catMap[cat]) catMap[cat] = { correct: 0, wrong: 0, subcats: {} };
+      if (!catMap[cat].subcats[subcat]) catMap[cat].subcats[subcat] = { correct: 0, wrong: 0 };
+    });
+  }
+  // Añadir contadores de respuestas
   qArr.forEach(q => {
     const cat = q.cat || '?';
     const subcat = q.subcat || '';
