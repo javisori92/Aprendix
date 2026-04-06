@@ -6784,26 +6784,20 @@ function _fixAppHeight() {
 }
 
 // ── iOS visual-viewport nav anchor ──────────────────────────────────────────
-// En iOS, position:fixed; bottom:0 puede no coincidir con el borde inferior
-// visible (p.ej. cuando la barra de Safari está presente o hay scroll drift).
-// Calculamos el offset real entre el viewport de layout y el visual viewport
-// y lo aplicamos como bottom del nav, de modo que su borde inferior siempre
-// quede exactamente adherido al borde inferior visible de la pantalla.
+// In standalone PWA mode, position:fixed;bottom:0 is always anchored to the
+// physical screen bottom by iOS — no JS offset is needed.
+// The previous approach of computing (window.innerHeight - vv.height - vv.offsetTop)
+// caused a race condition on startup:
+//   1. iOS launches with scrollY=34 (drift)
+//   2. visualViewport.scroll fires before scrollTo(0,0) is processed
+//   3. _safeBottomPx is still 0 (probe hasn't resolved env() yet)
+//   4. adjusted = 34 - 0 = 34 → nav.style.bottom = '34px' → BLACK GAP
+// Fix: always clear the inline style and let CSS env(safe-area-inset-bottom)
+// do its job. Scroll drift is handled by _resetScrollDrift(), not by nav math.
 function _syncNavBottom() {
   const nav = document.getElementById('bottom-nav');
   if (!nav) return;
-  if (_keyboardOpen) {
-    nav.style.bottom = '';
-    return;
-  }
-  const vv = window.visualViewport;
-  if (!vv) {
-    nav.style.bottom = '';
-    return;
-  }
-  const offset = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
-  const adjusted = Math.max(0, Math.round(offset - _safeBottomPx));
-  nav.style.bottom = adjusted > 1 ? adjusted + 'px' : '';
+  nav.style.bottom = '';
 }
 
 let _safeBottomPx = 0;
@@ -6991,12 +6985,15 @@ if (window.visualViewport) {
       _visualViewportResizeTimer = null;
       _updateKeyboardViewportState();
       _scheduleAppHeightSync();
-      if (!_keyboardOpen) { _scheduleScrollDriftReset(); _syncNavBottom(); }
+      // When keyboard closes, eliminate any residual scroll drift
+      if (!_keyboardOpen) _scheduleScrollDriftReset();
     }, 80);
   }, { passive: true });
-  // scroll del visual viewport (scroll drift en iOS Safari)
+  // scroll del visual viewport: this fires when iOS PWA has scroll drift
+  // (scrollY != 0 on second launch). Eliminate drift immediately — do NOT
+  // try to compensate the nav position, which causes the black gap race condition.
   window.visualViewport.addEventListener('scroll', () => {
-    if (!_keyboardOpen) _syncNavBottom();
+    if (!_keyboardOpen) _resetScrollDrift();
   }, { passive: true });
 }
 
