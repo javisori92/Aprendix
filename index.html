@@ -5519,7 +5519,7 @@ function renderStats() {
           <div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
               <span style="font-size:11px;color:var(--text2);padding-left:8px;border-left:2px solid ${sc};">${esc(label)}</span>
-              <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:${sc};">${sp}% · ${sd.correct}✓ ${sd.wrong}✗</span>
+              <span style="font-size:11px;font-family:'JetBrains Mono',monospace;"><span style="color:${sc};">${sp}%</span> · <span style="color:var(--success);">${sd.correct}✓</span> <span style="color:var(--danger);">${sd.wrong}✗</span></span>
             </div>
             <div style="height:3px;background:var(--surface3);border-radius:2px;margin-left:8px;">
               <div style="height:100%;width:${sp}%;background:${sc};border-radius:2px;"></div>
