@@ -6767,10 +6767,14 @@ document.addEventListener('touchstart', function(e) {
 //  3. También en el resize del visualViewport (teclado).
 
 function _getViewportHeight() {
-  const vv = window.visualViewport;
-  const vvHeight = vv ? Math.round(vv.height + vv.offsetTop) : 0;
-  const docHeight = document.documentElement ? document.documentElement.clientHeight : 0;
-  return Math.max(window.innerHeight || 0, vvHeight, docHeight);
+  // window.innerHeight is the layout viewport height — stable and never
+  // affected by iOS scroll drift. The previous formula (vv.height + vv.offsetTop)
+  // was inflated by scrollY during drift (e.g. 812 + 34 = 846px on iPhone 11),
+  // which set --app-height too large, overflowing the body by scrollY pixels and
+  // creating a black gap at the bottom of the screen.
+  // Keyboard detection still works: when keyboard is open, vv.height shrinks
+  // while window.innerHeight stays the same, so keyboardDelta > 0 correctly.
+  return window.innerHeight || document.documentElement.clientHeight || 0;
 }
 
 function _fixAppHeight() {
@@ -6905,13 +6909,19 @@ function _probeSafeAreaBottom() {
 }
 
 function _applyViewportFix() {
-  // On app open / return-from-background: reset keyboard state with
-  // a fresh viewport baseline before any deferred visualViewport updates.
-  _probeSafeAreaBottom(); // must run before _syncNavBottom reads --safe-bottom
+  // Step 1: clear scroll drift SYNCHRONOUSLY before any measurement.
+  // iOS PWA can have window.scrollY > 0 on second launch. If we measure
+  // _getViewportHeight() before clearing drift, --app-height may still be
+  // correct (we fixed _getViewportHeight), but position:fixed bottom:0 in iOS
+  // buggy mode places the nav scrollY-px above the true screen bottom.
+  // Clearing it synchronously eliminates any window for a wrong state.
+  _resetScrollDrift();
+  // Step 2: probe safe area AFTER drift is cleared (layout is settled).
+  _probeSafeAreaBottom();
   _stableAppHeight = _getViewportHeight();
   _setKeyboardOpen(false);
-  _scheduleScrollDriftReset();
-  _fixAppHeight(); // Ensure nav is synced immediately
+  _scheduleScrollDriftReset(); // rAF safety-net in case sync scrollTo needs a tick
+  _fixAppHeight();
 }
 
 function _stabilizeViewportOnOpen() {
