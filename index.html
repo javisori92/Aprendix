@@ -6884,9 +6884,27 @@ function _resetScrollDrift() {
   document.body.scrollTop = 0;
 }
 
+// ── Safe-area probe ────────────────────────────────────────────────────────
+// getComputedStyle().getPropertyValue('--safe-bottom') returns the raw
+// string "env(safe-area-inset-bottom, 0px)" — not a number — so _syncNavBottom
+// always reads safeBottom=0 and miscorrects the nav on iPhone 11.
+// Fix: measure env() via a concrete CSS property on a probe element and write
+// the resolved pixel value back as --safe-bottom so JS reads it correctly.
+function _probeSafeAreaBottom() {
+  const probe = document.createElement('div');
+  probe.style.cssText = 'position:fixed;pointer-events:none;opacity:0;' +
+    'bottom:0;left:0;width:1px;height:env(safe-area-inset-bottom,0px);';
+  document.body.appendChild(probe);
+  const val = Math.round(parseFloat(getComputedStyle(probe).height) || 0);
+  probe.parentNode.removeChild(probe);
+  document.documentElement.style.setProperty('--safe-bottom', val + 'px');
+  return val;
+}
+
 function _applyViewportFix() {
   // On app open / return-from-background: reset keyboard state with
   // a fresh viewport baseline before any deferred visualViewport updates.
+  _probeSafeAreaBottom(); // must run before _syncNavBottom reads --safe-bottom
   _stableAppHeight = _getViewportHeight();
   _setKeyboardOpen(false);
   _scheduleScrollDriftReset();
@@ -6938,6 +6956,9 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // Rotación o resize (también cubre apertura/cierre del teclado)
+window.addEventListener('orientationchange', () => {
+  setTimeout(_probeSafeAreaBottom, 300); // env() value can change after rotation
+});
 window.addEventListener('resize', () => {
   _updateKeyboardViewportState();
   _scheduleAppHeightSync();
