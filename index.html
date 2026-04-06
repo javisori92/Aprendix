@@ -7,7 +7,7 @@
 <!-- PWA / iOS -->
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-name" content="Aprendix">
 <meta name="theme-color" content="#7c6eff">
 <meta name="description" content="Tu app de estudio y exámenes">
@@ -170,14 +170,7 @@
     box-sizing: border-box;
     transition: opacity .2s ease;
     will-change: transform;
-    /* --viewport-cover-gap compensates for the iOS PWA bug where
-       viewport-fit=cover sets the coordinate origin at y=0 (behind the
-       status bar, hence safe-area-inset-top=48px) but does NOT extend
-       the CSS viewport height to screen.height. Result: bottom:0 lands
-       at y=848 instead of y=896 on iPhone 11, leaving a 48px black gap.
-       translateY pushes the GPU compositing layer below the CSS clip
-       boundary, which iOS renders correctly on-screen. */
-    transform: translateY(var(--viewport-cover-gap, 0px)) translateZ(0);
+    transform: translateZ(0);
     backface-visibility: hidden;
   }
   body.nav-visible:not(.keyboard-open) .bottom-nav {
@@ -6919,24 +6912,11 @@ function _probeSafeAreaBottom() {
 // to push its GPU compositing layer below the CSS clip boundary, which iOS WebKit
 // renders correctly on the physical screen even outside the CSS viewport.
 function _probeViewportCoverGap() {
-  const isStandalone = window.matchMedia('(display-mode:standalone)').matches ||
-    !!window.navigator.standalone;
-  if (!isStandalone) {
-    document.documentElement.style.setProperty('--viewport-cover-gap', '0px');
-    return;
-  }
-  const probe = document.createElement('div');
-  probe.style.cssText = 'position:fixed;top:0;bottom:0;left:0;width:0;' +
-    'pointer-events:none;visibility:hidden;';
-  document.body.appendChild(probe);
-  const cssVpH = Math.round(probe.getBoundingClientRect().height);
-  probe.parentNode.removeChild(probe);
-  const gap = Math.max(0, screen.height - cssVpH);
-  // Only set gap when it's in a plausible range (status bar heights: 20-60px).
-  // Avoids false positives from transient layout states during animations.
-  const plausible = gap >= 10 && gap <= 70;
-  document.documentElement.style.setProperty('--viewport-cover-gap',
-    plausible ? gap + 'px' : '0px');
+  // With apple-mobile-web-app-status-bar-style=black, the webview frame
+  // starts BELOW the status bar (physical y=48 on iPhone 11). The CSS
+  // viewport is 848px and bottom:0 correctly reaches physical y=896.
+  // No gap compensation needed. Always set to 0.
+  document.documentElement.style.setProperty('--viewport-cover-gap', '0px');
 }
 
 function _applyViewportFix() {
