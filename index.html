@@ -2871,7 +2871,7 @@ function setTimeMode(mode) {
 }
 
 function changeQty(delta) {
-  customQty = Math.max(1, Math.min(customQty + delta, 200));
+  customQty = Math.max(10, Math.min(customQty + delta, 200));
   document.getElementById('qty-display').textContent = customQty;
 }
 
