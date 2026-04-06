@@ -6767,13 +6767,18 @@ document.addEventListener('touchstart', function(e) {
 //  3. También en el resize del visualViewport (teclado).
 
 function _getViewportHeight() {
-  // window.innerHeight is the layout viewport height — stable and never
-  // affected by iOS scroll drift. The previous formula (vv.height + vv.offsetTop)
-  // was inflated by scrollY during drift (e.g. 812 + 34 = 846px on iPhone 11),
-  // which set --app-height too large, overflowing the body by scrollY pixels and
-  // creating a black gap at the bottom of the screen.
-  // Keyboard detection still works: when keyboard is open, vv.height shrinks
-  // while window.innerHeight stays the same, so keyboardDelta > 0 correctly.
+  // In iOS PWA standalone with viewport-fit=cover, window.innerHeight
+  // excludes the status bar (48px on iPhone 11 with notch).
+  // 100dvh / screen.height includes the full physical screen.
+  // We use screen.height when in standalone to get the true full height.
+  // Outside standalone (Safari browser), window.innerHeight is correct.
+  const isStandalone = window.matchMedia('(display-mode:standalone)').matches ||
+    !!window.navigator.standalone;
+  if (isStandalone) {
+    // screen.height in points = physical screen height at 1x scale,
+    // which matches CSS px in iOS. This always equals the full screen.
+    return screen.height || window.innerHeight;
+  }
   return window.innerHeight || document.documentElement.clientHeight || 0;
 }
 
@@ -7267,9 +7272,10 @@ initDomCache();
 
     // Diagnóstico automático
     let diag = '';
-    if(gap > 0 && Math.abs(gap - safeBot) < 4) diag = '⚠ gap≈safeArea → viewport-fit issue';
-    else if(gap > 0 && Math.abs(gap-44)<=4) diag = '⚠ gap≈44px → statusBar not covered';
-    else if(gap > 0 && gap===48) diag = '⚠ gap=48px → iPhone notch statusBar';
+    const isStandalone = window.matchMedia('(display-mode:standalone)').matches || !!navigator.standalone;
+    if(isStandalone && appH === screen.height + 'px') diag = '✓ app-height=screen.height CORRECTO';
+    else if(isStandalone && gap === 48 && appH !== screen.height + 'px') diag = '⚠ app-height recortado: falta statusBar('+gap+'px)';
+    else if(gap > 0 && Math.abs(gap - safeBot) < 4) diag = '⚠ gap≈safeArea → viewport-fit issue';
     else if(gap === 0 && typeof drift==='number' && drift > 1) diag = '⚠ scrollDrift=' + drift;
     else if(gap === 0 && drift === 0) diag = '✓ sin gap ni drift detectado';
     else diag = 'gap=' + gap + ' drift=' + drift;
