@@ -2547,7 +2547,7 @@ function setupSelectFile() {
       try {
         const data = JSON.parse(ev.target.result);
         if (data.questions) {
-          db = data; saveDB();
+          db = data; saveDBNow(); loadDB();
           showToast('Datos cargados correctamente', 'success');
         }
       } catch(e) { showToast('Error al leer el archivo', 'error'); }
@@ -3013,7 +3013,7 @@ function startRealExam() {
   if (pool.length < 40) { showToast('Se necesitan al menos 40 preguntas para el examen real', 'error'); return; }
   const st = loadStats();
   const qs = weightedShuffle(pool, 1.0, st, 1.0, 'exam').slice(0, 40);
-  lastExamConfig = { mode: 'real', cat: selectedRealCat };
+  lastExamConfig = { mode: 'real', cat: selectedRealCat, pool: qs, timeSec: 50 * 60 };
   launchExam(qs, 50 * 60, true);
 }
 
@@ -3027,6 +3027,7 @@ function startCustomExam() {
   if (customQtyMode === 'custom') pool = pool.slice(0, customQty);
   const timeSec = customTimeMode === 'none' ? 0 : parseInt(document.getElementById('time-range').value) * 60;
   lastExamConfig = { mode: 'personalizado', selection: JSON.parse(JSON.stringify(customSelection)), qtyMode: customQtyMode, qty: customQty, timeMode: customTimeMode, timeSec };
+  lastExamConfig.pool = [...pool];
   launchExam(pool, timeSec, false);
 }
 
@@ -3416,15 +3417,19 @@ function confirmRetryExam() {
 
 function retryExam() {
   if (!lastExamConfig) { goHome(); return; }
-  if (lastExamConfig.mode === 'real') {
-    selectedRealCat = lastExamConfig.cat;
-    startRealExam();
-  } else {
-    if (lastExamConfig.selection) customSelection = lastExamConfig.selection;
-    if (lastExamConfig.qtyMode) customQtyMode = lastExamConfig.qtyMode;
-    if (lastExamConfig.qty) customQty = lastExamConfig.qty;
-    startCustomExam();
-  }
+    if (lastExamConfig.pool && lastExamConfig.pool.length > 0) {
+      // Reuse same questions — re-shuffle order and option positions
+      const timeSec = lastExamConfig.timeSec !== undefined ? lastExamConfig.timeSec : (lastExamConfig.mode === 'real' ? 50 * 60 : 0);
+      launchExam(shuffle([...lastExamConfig.pool]), timeSec, lastExamConfig.mode === 'real');
+    } else if (lastExamConfig.mode === 'real') {
+      selectedRealCat = lastExamConfig.cat;
+      startRealExam();
+    } else {
+      if (lastExamConfig.selection) customSelection = lastExamConfig.selection;
+      if (lastExamConfig.qtyMode) customQtyMode = lastExamConfig.qtyMode;
+      if (lastExamConfig.qty) customQty = lastExamConfig.qty;
+      startCustomExam();
+    }
 }
 
 function goNewExam() {
@@ -4806,6 +4811,8 @@ function importData(e) {
       db.questions.forEach(q => {
         if (q.cat && !db.categories.includes(q.cat)) db.categories.push(q.cat);
       });
+        // sync db.subcategories with subcategories from imported questions
+        db.questions.forEach(q => { if (q.subcat && q.cat) registerSubcat(q.cat, q.subcat); });
       
       invalidateQuestionIndex();
       saveDB();
@@ -6911,6 +6918,10 @@ function _updateKeyboardViewportState() {
   if (keyboardLikelyOpen) {
     _stableAppHeight = Math.max(_stableAppHeight, _getViewportHeight());
     _setKeyboardOpen(true);
+    // Ensure the focused input is visible above the keyboard.
+    if (active && active.scrollIntoView) {
+      active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
     return;
   }
 
