@@ -1408,7 +1408,7 @@
   <div id="config-real">
     <div class="card">
       <p style="font-size:13px;color:var(--text2);line-height:1.6;">
-        El examen real selecciona <span class="inline-num">40</span> preguntas aleatorias de la categoría elegida con un tiempo límite de <span class="inline-num">50 minutos</span>. Penalización: <span class="inline-num">−1</span> punto por cada <span class="inline-num">3</span> fallos. Las respuestas en blanco no puntúan.
+        El examen real selecciona <span class="inline-num">40</span> preguntas aleatorias de la categoría elegida con un tiempo límite de <span class="inline-num">50 minutos</span>. Sistema de puntuación: <span class="inline-num">+0.25</span> correctas, <span class="inline-num">−0.083</span> falladas, <span class="inline-num">0</span> en blanco.
       </p>
     </div>
     <div class="section-title">Categoría</div>
@@ -2056,7 +2056,7 @@
       <div class="subopt-icon" style="background:rgba(255,110,156,.2);color:var(--accent2);">⏱️</div>
       <div style="flex:1;min-width:0;">
         <h4>Examen general</h4>
-        <p>40 preguntas · 50 min · con penalización</p>
+        <p>40 preguntas · 50 min · sistema estándar</p>
       </div>
     </div>
 
@@ -3189,12 +3189,13 @@ function finishExam() {
     else if (ans === q.opts.correct) { correct++; }
     else { wrong++; }
   });
-  const penalty = examPenalty ? Math.floor(wrong / 3) : 0;
-  const score = correct - penalty;
-  const total = examQuestions.length;
-  const rawNote = (score / total) * 10;
-  const note10 = Math.max(0, Math.round(rawNote * 100) / 100);
-  const note10str = note10 % 1 === 0 ? note10.toFixed(1) : note10.toFixed(2);
+  // Sistema de puntuación adaptable: +10/total aciertos, -(10/total)/3 errores, 0 en blanco
+  const totalQuestions = examQuestions.length;
+  const pointsPerCorrect = 10 / totalQuestions;
+  const pointsPerWrong = -pointsPerCorrect / 3;
+  const score = (correct * pointsPerCorrect) + (wrong * pointsPerWrong);
+  const note10 = Math.max(0, score);
+  const note10str = note10.toFixed(2);
 
   // Score message by grade
   let scoreMsg, scoreColor;
@@ -3215,7 +3216,7 @@ function finishExam() {
   // Pre-fill hidden result elements
   document.getElementById('res-score').textContent = note10str;
   document.getElementById('res-label').textContent =
-    `${score}/${total} puntos · ${examPenalty ? 'con penalización' : 'sin penalización'}`;
+    `${correct} correctas · ${wrong} falladas · ${blank} en blanco`;
   document.getElementById('res-correct').textContent = correct;
   document.getElementById('res-wrong').textContent = wrong;
   document.getElementById('res-blank').textContent = blank;
