@@ -286,11 +286,14 @@
     background: var(--surface2); border: 1px solid var(--border);
     border-radius: var(--radius-sm); color: var(--text);
     font-family: 'Sora', sans-serif; font-size: 16px;
-    outline: none; transition: border-color .2s;
+    outline: none; transition: border-color .2s, background-color .2s;
     -webkit-appearance: none;
   }
   input:focus, textarea:focus, select:focus {
-    border-color: var(--accent);
+    border-color: var(--accent); background-color: var(--surface3);
+  }
+  body.keyboard-open input:focus, body.keyboard-open textarea:focus, body.keyboard-open select:focus {
+    box-shadow: 0 0 0 3px rgba(124, 110, 255, 0.15);
   }
   textarea { resize: none; min-height: 70px; }
   select option { background: var(--surface2); }
@@ -709,6 +712,8 @@
     display: flex; align-items: flex-end;
     opacity: 0; pointer-events: none;
     transition: opacity .25s;
+    transform: translateY(0);
+    will-change: transform;
   }
   .modal-overlay.open {
     opacity: 1; pointer-events: all;
@@ -6919,14 +6924,51 @@ function _updateKeyboardViewportState() {
   if (keyboardLikelyOpen) {
     _stableAppHeight = Math.max(_stableAppHeight, _getViewportHeight());
     _setKeyboardOpen(true);
-    // Ensure the focused input is visible above the keyboard.
-    if (active && active.scrollIntoView) {
-      active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    
+    // Ensure the focused input is visible above the keyboard
+    if (active) {
+      // Primero, intenta scrollIntoView estándar
+      if (active.scrollIntoView) {
+        active.scrollIntoView({ block: 'nearest', behavior: 'auto' });
+      }
+      
+      // Luego, maneja específicamente modales para garantizar que queden visibles
+      const modal = active.closest('.modal-overlay');
+      if (modal && modal.classList.contains('open')) {
+        setTimeout(() => {
+          const inputRect = active.getBoundingClientRect();
+          const keyboardHeight = _getViewportHeight() - vvHeight;
+          const visibleViewportHeight = vvHeight;
+          const gap = 20; // margen mínimo desde el input hasta el teclado
+          
+          // Si el input está debajo o muy cerca del teclado
+          if (inputRect.bottom > visibleViewportHeight - gap) {
+            // Calcula cuánto necesita subir el input para estar visible
+            const overflow = inputRect.bottom - (visibleViewportHeight - gap);
+            
+            // Desplaza el modal hacia arriba
+            const currentShift = parseFloat(modal.dataset.keyboardShift || 0);
+            const newShift = Math.min(currentShift - overflow, -overflow);
+            
+            // Aplica el desplazamiento suavemente
+            modal.style.transform = `translateY(${newShift}px)`;
+            modal.dataset.keyboardShift = newShift;
+          }
+        }, 50);
+      }
     }
     return;
   }
 
   _setKeyboardOpen(false);
+  
+  // Restaura la posición del modal cuando el teclado se cierra
+  setTimeout(() => {
+    document.querySelectorAll('.modal-overlay[data-keyboard-shift]').forEach(modal => {
+      modal.style.transform = '';
+      delete modal.dataset.keyboardShift;
+    });
+  }, 100);
 }
 
 function _resetScrollDrift() {
@@ -7073,6 +7115,22 @@ if (window.visualViewport) {
 document.addEventListener('focusin', () => {
   if (_keyboardStateTimer) clearTimeout(_keyboardStateTimer);
   _keyboardStateTimer = setTimeout(_updateKeyboardViewportState, 60);
+  
+  // Para modales, asegura que el input estará visible cuando el teclado se abra
+  const active = document.activeElement;
+  const modal = active?.closest?.('.modal-overlay');
+  if (modal && _isEditableElement(active)) {
+    const modalSheet = modal.querySelector('.modal-sheet');
+    if (modalSheet) {
+      // Hace que el input sea el segundo elemento después del handle/title
+      // para garantizar que hay espacio visible sobre el teclado
+      setTimeout(() => {
+        if (active.scrollIntoView) {
+          active.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+      }, 100);
+    }
+  }
 }, true);
 
 document.addEventListener('focusout', () => {
