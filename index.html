@@ -3195,10 +3195,11 @@ function finishExam() {
     else { wrong++; }
   });
   // Sistema de puntuación adaptable: +10/total aciertos, -(10/total)/3 errores, 0 en blanco
-  const totalQuestions = examQuestions.length;
-  const pointsPerCorrect = 10 / totalQuestions;
+  const total = examQuestions.length;
+  const pointsPerCorrect = 10 / total;
   const pointsPerWrong = -pointsPerCorrect / 3;
   const score = (correct * pointsPerCorrect) + (wrong * pointsPerWrong);
+  const rawNote = (score / total) * 10;
   const note10 = Math.max(0, score);
   const note10str = note10.toFixed(2);
 
