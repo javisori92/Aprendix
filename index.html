@@ -3559,7 +3559,7 @@ function startCustomStudy() {
 }
 
 function goStudy() {
-  const cats = getCategories();
+  const cats = getCategories().filter(cat => getQuestionsByCat(cat).length > 0);
   if (cats.length === 0) { showToast('No hay preguntas. Añade preguntas primero.', 'error'); return; }
   launchStudy(db.questions, 'Modo estudio — Todas las preguntas');
 }
