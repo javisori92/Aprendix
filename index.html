@@ -9,7 +9,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-name" content="Aprendix">
-<meta name="theme-color" content="#7c6eff">
+<meta name="theme-color" content="#007aff">
+<meta name="color-scheme" content="light dark">
 <meta name="description" content="Tu app de estudio y exámenes">
 
 <!-- Manifest (inline for single-file deployment) -->
@@ -22,8 +23,6 @@
 
 <title>Aprendix</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-
   :root {
     --bg: #0a0a0f;
     --surface: #13131a;
@@ -41,6 +40,7 @@
     --danger: #ff4f6e;
     --success: #4fffaa;
     --warning: #ffd96e;
+    --addButton: #4cca61;
     --radius: 16px;
     --radius-sm: 10px;
     --safe-top: env(safe-area-inset-top, 0px);
@@ -59,7 +59,7 @@
     --text: #0a0a1a;
     --text1: #0a0a1a;
     --text2: #4a4a6a;
-    --text3: #8888aa;
+    --text3: #aa9288;
     --accent: #5a4ecc;
     --accent2: #e0466a;
     --accent3: #00a86b;
@@ -242,7 +242,11 @@
   .btn-primary { background: var(--accent); color: white; }
   .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
   .btn-danger { background: rgba(255,79,110,.15); color: var(--danger); border: 1px solid rgba(255,79,110,.3); }
-  .btn-success { background: rgba(79,255,170,.12); color: var(--success); border: 1px solid rgba(79,255,170,.3); }
+  .btn-success { 
+    background: rgba(79,255,170,.12); 
+    color: var(--success); 
+    border: 1px solid rgba(79,255,170,.3); }
+  
   .btn-accent2 { background: var(--accent2); color: white; }
 
   .btn-row { display: flex; gap: 10px; }
@@ -406,7 +410,10 @@
     background: linear-gradient(135deg, var(--text) 0%, var(--accent) 100%);
     -webkit-background-clip: text; -webkit-text-fill-color: transparent;
   }
-  .stat-label { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .stat-label { 
+    font-size: 13px; 
+    color: var(--text3); 
+    margin-top: 2px; }
 
   .mode-grid {
     display: grid; grid-template-columns: 1fr;
@@ -422,7 +429,9 @@
     touch-action: manipulation;
     user-select: none; -webkit-user-select: none;
   }
+  
   .mode-card:active { transform: scale(0.98); background: var(--surface2); }
+  
   .mode-icon {
     width: 44px; height: 44px; border-radius: 12px;
     display: flex; align-items: center; justify-content: center;
@@ -444,9 +453,10 @@
     display: none; flex-direction: column; gap: 8px;
     padding: 4px 0 4px 58px; /* indent under icon */
   }
+
   .mode-subopts.open { display: flex; }
   .mode-subopt {
-    background: var(--surface2); border: 1px solid var(--border);
+    background: #efefef; border: 1px solid var(--border);
     border-radius: var(--radius-sm); padding: 12px 16px;
     display: flex; align-items: center; gap: 12px;
     cursor: pointer; transition: all .15s;
@@ -459,13 +469,14 @@
     from { opacity:0; transform:translateY(-6px); }
     to   { opacity:1; transform:translateY(0); }
   }
+  
   .subopt-icon {
     width: 32px; height: 32px; border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0; font-size: 16px;
   }
-  .mode-subopt h4 { font-size: 13px; font-weight: 600; margin: 0; }
-  .mode-subopt p { font-size: 11px; color: var(--text3); margin: 2px 0 0; }
+  .mode-subopt h4 { font-size: 16px; font-weight: 600; margin: 0; }
+  .mode-subopt p { font-size: 13px; color: rgb(100, 100, 100); margin: 2px 0 0; }
 
   /* ── QUESTION CARD ── */
   .q-card {
@@ -623,14 +634,12 @@
     display: none;
   }
   .study-feedback.correct-fb {
-    background: rgba(79,255,170,.12);
-    border: 1px solid rgba(79,255,170,.3);
-    color: var(--success); display: block;
+    background: var(--ios-green);
+    color: white; display: block;
   }
   .study-feedback.wrong-fb {
-    background: rgba(255,79,110,.1);
-    border: 1px solid rgba(255,79,110,.3);
-    color: var(--danger); display: block;
+    background: var(--ios-red);
+    color: white; display: block;
   }
 
   /* ── EDITOR ── */
@@ -702,8 +711,8 @@
     transition: opacity .2s;
   }
   .q-editor-actions button:active { opacity: .7; }
-  .btn-edit-q { background: rgba(124,110,255,.2); color: var(--accent); }
-  .btn-del-q { background: rgba(255,79,110,.15); color: var(--danger); }
+  .btn-edit-q { background:  #007aff transparent; color: #007aff; opacity: 80;}
+  .btn-del-q { background: #ff3b30 transparent; color: #ff3b30; }
 
   /* ── MODAL ── */
   .modal-overlay {
@@ -1060,6 +1069,896 @@
     height: 100vh;
     background-color: var(--bg);
   }
+
+/* ================================================================
+   APRENDIX — iOS NATIVE REDESIGN
+   Visual layer only: IDs, JS hooks and application logic untouched.
+   ================================================================ */
+:root {
+  --bg: #f2f2f7;
+  --surface: rgba(255,255,255,.92);
+  --surface2: #e5e5ea;
+  --surface3: #d1d1d6;
+  --border: rgba(60,60,67,.18);
+  --accent: #007aff;
+  --accent2: #5856d6;
+  --accent3: #34c759;
+  --accent4: #ff9f0a;
+  --text: #1c1c1e;
+  --text1: #1c1c1e;
+  --text2: #636366;
+  --text3: #8e8e93;
+  --danger: #ff3b30;
+  --success: #34c759;
+  --warning: #ff9f0a;
+  --radius: 14px;
+  --radius-sm: 10px;
+  --ios-blue: #007aff;
+  --ios-green: #34c759;
+  --ios-red: #ff3b30;
+  --ios-orange: #ff9500;
+  --ios-yellow: #ffcc00;
+  --ios-indigo: #5856d6;
+  --ios-purple: #af52de;
+  --ios-pink: #ff2d55;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --nav-base-height: 66px;
+  --nav-height: calc(var(--nav-base-height) + var(--safe-bottom));
+  --shadow-card: 0 1px 2px rgba(0,0,0,.035), 0 8px 24px rgba(0,0,0,.045);
+  --shadow-float: 0 12px 35px rgba(0,0,0,.14);
+  color-scheme: light;
+}
+
+[data-theme="light"] {
+  --bg: #f2f2f7;
+  --surface: rgba(255,255,255,.94);
+  --surface2: #e5e5ea;
+  --surface3: #d1d1d6;
+  --border: rgba(60,60,67,.18);
+  --text: #1c1c1e;
+  --text1: #1c1c1e;
+  --text2: #636366;
+  --text3: #8e8e93;
+  --accent: #007aff;
+  --accent2: #5856d6;
+  --accent3: #34c759;
+  --accent4: #ff9f0a;
+  --danger: #ff3b30;
+  --success: #34c759;
+  --warning: #ff9f0a;
+  color-scheme: light;
+}
+
+:root:not([data-theme="light"]) {
+  --bg: #000;
+  --surface: #1c1c1e;
+  --surface2: #2c2c2e;
+  --surface3: #3a3a3c;
+  --border: rgba(235,235,245,.16);
+  --text: #f2f2f7;
+  --text1: #f2f2f7;
+  --text2: #aeaeb2;
+  --text3: #8e8e93;
+  --accent: #0a84ff;
+  --accent2: #5e5ce6;
+  --accent3: #30d158;
+  --accent4: #ff9f0a;
+  --danger: #ff453a;
+  --success: #30d158;
+  --warning: #ff9f0a;
+  color-scheme: dark;
+}
+
+html, body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif !important;
+  letter-spacing: -0.012em;
+  background: var(--bg) !important;
+  color: var(--text) !important;
+}
+
+body {
+  font-size: 16px !important;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body::before { display: none !important; }
+
+* { -webkit-tap-highlight-color: transparent !important; }
+
+/* Screens */
+.screen {
+  padding: calc(var(--safe-top) + 8px) 20px calc(var(--nav-height) + 14px) !important;
+  background: var(--bg) !important;
+  transform: translateY(12px) !important;
+  transition: opacity .24s ease, transform .28s cubic-bezier(.2,.8,.2,1) !important;
+}
+.screen.active { transform: translateY(0) !important; }
+
+/* Hide scrollbar without changing scroll behavior */
+.screen::-webkit-scrollbar { width: 0; height: 0; }
+
+/* Typography */
+.page-header {
+  min-height: 46px;
+  margin: 0 0 22px !important;
+  gap: 12px !important;
+}
+.page-header h1 {
+  font-size: 24px !important;
+  line-height: 1.15;
+  font-weight: 700 !important;
+  letter-spacing: -.035em !important;
+  color: var(--text) !important;
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+.section-title {
+  margin: 24px 2px 8px !important;
+  color: var(--text2) !important;
+  font-size: 13px !important;
+  line-height: 1.2;
+  font-weight: 600 !important;
+  letter-spacing: -.005em !important;
+  text-transform: none !important;
+}
+
+/* Cards */
+.card, .stat-card, .q-card, .mode-card {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-card);
+}
+.card {
+  border-radius: 14px !important;
+  padding: 16px !important;
+  margin-bottom: 12px !important;
+}
+
+/* Buttons */
+.btn {
+  min-height: 50px;
+  padding: 14px 18px !important;
+  border-radius: 12px !important;
+  border: 0 !important;
+  font-family: inherit !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  letter-spacing: -.015em;
+  box-shadow: none;
+  transition: transform .12s ease, opacity .12s ease, background .18s ease !important;
+}
+.btn:active { transform: scale(.975) !important; opacity: .82 !important; }
+.btn-primary { background: var(--accent) !important; color: #fff !important; }
+.btn-secondary {
+  background: var(--surface2) !important;
+  color: var(--text) !important;
+  border-color: transparent !important;
+}
+.btn-danger { 
+  background: var(--ios-red) !important; 
+  color: white !important; 
+}
+.btn-success { background: color-mix(in srgb, var(--success) 13%, transparent) !important; color: var(--success) !important; border: 1px solid color-mix(in srgb, var(--success) 20%, transparent) !important; }
+.btn-addElement { 
+  background: var(--addButton) !important; 
+  color: white !important; 
+  border: 1px solid color-mix(in srgb, var(--success) 20%, transparent) !important; 
+}
+.btn-accent2 { background: var(--accent2) !important; color: #fff !important; }
+.btn-row { gap: 10px !important; }
+
+/* Back buttons */
+.back-btn {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  background: var(--surface2) !important;
+  border: 0 !important;
+  color: var(--accent) !important;
+  box-shadow: none !important;
+}
+.back-btn svg { width: 18px !important; height: 18px !important; color: var(--accent) !important; }
+.back-btn:active { background: var(--surface3) !important; transform: scale(.94); }
+
+/* Home */
+#screen-home .logo-area {
+  padding: 24px 0 18px !important;
+}
+.logo-mark {
+  color: var(--accent) !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: -.01em !important;
+  text-transform: none !important;
+  margin-bottom: 10px !important;
+}
+.logo-title {
+  font-size: clamp(34px, 10vw, 42px) !important;
+  line-height: .98 !important;
+  letter-spacing: -.055em !important;
+  font-weight: 750 !important;
+  background: none !important;
+  color: var(--text) !important;
+  -webkit-text-fill-color: currentColor !important;
+  margin-bottom: 10px !important;
+}
+.logo-sub { font-size: 15px !important; color: var(--text2) !important; }
+
+#screen-home > .back-btn {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-card) !important;
+  font-size: 18px !important;
+}
+
+.home-stats {
+  grid-template-columns: 1fr 1fr !important;
+  gap: 10px !important;
+  margin: 6px 0 22px !important;
+}
+.stat-card {
+  border-radius: 14px !important;
+  padding: 15px !important;
+  min-height: 88px;
+}
+.stat-num {
+  font-family: inherit !important;
+  font-size: 29px !important;
+  line-height: 1.05;
+  font-weight: 700 !important;
+  letter-spacing: -.045em !important;
+  background: none !important;
+  color: var(--text) !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+.stat-label { font-size: 15px !important; color: var(--text2) !important; margin-top: 6px !important; }
+
+.mode-grid { gap: 10px !important; }
+.mode-card {
+  min-height: 76px;
+  padding: 14px !important;
+  border-radius: 14px !important;
+  box-shadow: var(--shadow-card);
+  gap: 13px !important;
+}
+.mode-card:active { transform: scale(.985) !important; }
+.mode-icon {
+  width: 46px !important; height: 46px !important;
+  border-radius: 13px !important;
+}
+.mode-icon.green { background: color-mix(in srgb, var(--ios-green) 13%, transparent) !important; color: var(--ios-green) !important; }
+.mode-icon.purple { background: color-mix(in srgb, var(--ios-indigo) 13%, transparent) !important; color: var(--ios-indigo) !important; }
+.mode-icon.red { background: color-mix(in srgb, var(--ios-red) 13%, transparent) !important; color: var(--ios-red) !important; }
+.mode-text h3 { font-size: 16px !important; font-weight: 600 !important; letter-spacing: -.02em; }
+.mode-text p { font-size: 13px !important; line-height: 1.3; color: var(--text2) !important; }
+.chevron { color: var(--text3) !important; }
+.chevron svg { width: 15px !important; height: 15px !important; }
+
+/* Settings / grouped lists */
+.settings-row {
+  min-height: 58px !important;
+  padding: 12px 16px !important;
+}
+.settings-info { gap: 12px !important; }
+.settings-icon-wrap {
+  width: 30px; height: 30px;
+  display: grid; place-items: center;
+  border-radius: 8px;
+  background: var(--surface2);
+  font-size: 16px;
+}
+.settings-label { font-size: 16px !important; font-weight: 500 !important; }
+.settings-sub { font-size: 12px !important; color: var(--text3) !important; margin-top: 3px !important; }
+.settings-divider { background: var(--border) !important; margin-left: 58px !important; }
+.ios-toggle { width: 51px !important; height: 31px !important; border-radius: 16px !important; background: var(--surface3) !important; }
+.ios-toggle.on { background: var(--ios-green) !important; }
+.ios-toggle-knob { width: 27px !important; height: 27px !important; }
+
+/* Forms */
+.input-group { margin-bottom: 16px !important; }
+.input-group label {
+  font-size: 13px !important;
+  color: var(--text2) !important;
+  margin: 0 0 7px 2px !important;
+}
+input, textarea, select {
+  min-height: 46px;
+  padding: 12px 14px !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 11px !important;
+  color: var(--text) !important;
+  font-family: inherit !important;
+  font-size: 16px !important;
+  box-shadow: inset 0 0 0 .5px rgba(0,0,0,.02);
+}
+textarea { min-height: 88px; }
+input:focus, textarea:focus, select:focus {
+  border-color: var(--accent) !important;
+  background: var(--surface) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent) !important;
+}
+
+/* Chips / segmented controls */
+.chips-wrap { gap: 8px !important; }
+.chip, .sort-chip {
+  min-height: 36px;
+  padding: 8px 13px !important;
+  border-radius: 9px !important;
+  background: var(--surface2) !important;
+  border: 0 !important;
+  color: var(--text2) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+.chip.selected, .sort-chip.selected {
+  background: var(--accent) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+
+/* Question / exam */
+.exam-header {
+  min-height: 40px;
+  margin-bottom: 18px !important;
+  gap: 10px !important;
+}
+.progress-bar-wrap {
+  height: 5px !important;
+  background: var(--surface3) !important;
+  border-radius: 999px !important;
+}
+.progress-bar {
+  background: var(--accent) !important;
+  border-radius: 999px !important;
+}
+.q-counter {
+  min-width: 48px;
+  color: var(--text2) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  text-align: right;
+}
+.timer-display {
+  padding: 7px 10px !important;
+  border-radius: 9px !important;
+  background: color-mix(in srgb, var(--danger) 12%, transparent) !important;
+  color: var(--danger) !important;
+  border: 0 !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+}
+.q-card {
+  border-radius: 16px !important;
+  padding: 20px !important;
+  margin-bottom: 14px !important;
+  overflow: hidden;
+}
+.q-card::before {
+  height: 0 !important;
+  display: none !important;
+}
+.q-num {
+  font-family: inherit !important;
+  font-size: 12px !important;
+  color: var(--text3) !important;
+  font-weight: 600 !important;
+  margin-bottom: 12px !important;
+}
+.q-text {
+  font-size: 18px !important;
+  line-height: 1.42 !important;
+  font-weight: 600 !important;
+  letter-spacing: -.022em !important;
+  margin-bottom: 20px !important;
+}
+.answer-opt {
+  min-height: 56px;
+  padding: 11px 12px !important;
+  margin-bottom: 9px !important;
+  border-radius: 12px !important;
+  background: var(--surface2) !important;
+  border: 1px solid transparent !important;
+}
+.answer-opt .opt-letter {
+  width: 32px !important; height: 32px !important;
+  border-radius: 50% !important;
+  background: var(--surface3) !important;
+  color: var(--text2) !important;
+  font-family: inherit !important;
+  font-size: 13px !important;
+}
+.answer-opt .opt-text { font-size: 15px !important; line-height: 1.35 !important; }
+.answer-opt.selected { background: color-mix(in srgb, var(--accent) 11%, var(--surface)) !important; border-color: color-mix(in srgb, var(--accent) 45%, transparent) !important; }
+.answer-opt.selected .opt-letter { background: var(--accent) !important; color: #fff !important; }
+.answer-opt.correct { background: color-mix(in srgb, var(--success) 11%, var(--surface)) !important; border-color: color-mix(in srgb, var(--success) 40%, transparent) !important; }
+.answer-opt.correct .opt-letter { background: var(--success) !important; color: #fff !important; }
+.answer-opt.wrong { background: color-mix(in srgb, var(--danger) 11%, var(--surface)) !important; border-color: color-mix(in srgb, var(--danger) 40%, transparent) !important; }
+.answer-opt.wrong .opt-letter { background: var(--danger) !important; color: #fff !important; }
+
+/* Badges */
+.badge {
+  min-height: 26px;
+  padding: 5px 9px !important;
+  border-radius: 12px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+.subCatBadge{
+  background:rgba(110,255,184,.1);
+  color:var(--accent3);
+  border: 1px solid;
+  border-color: var(--ios-green);
+  margin-left:4px;
+  min-height: 26px;
+  padding: 5px 9px !important;
+  border-radius: 12px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+.badge-accent { 
+  background: color-mix(in srgb, var(--accent) 12%, transparent) !important; 
+  color: var(--accent) !important; 
+}
+.badge-success { background: color-mix(in srgb, var(--success) 12%, transparent) !important; color: var(--success) !important; }
+.badge-danger { background: color-mix(in srgb, var(--danger) 12%, transparent) !important; color: var(--danger) !important; }
+.badge-warning { background: color-mix(in srgb, var(--warning) 12%, transparent) !important; color: var(--warning) !important; }
+
+/* Results */
+.result-hero {
+  padding: 32px 0 24px !important;
+  text-align: center;
+}
+.result-score {
+  font-size: clamp(58px, 18vw, 78px) !important;
+  line-height: .95 !important;
+  font-weight: 750 !important;
+  letter-spacing: -.065em !important;
+  color: var(--text) !important;
+  background: none !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+.result-label { font-size: 14px !important; color: var(--text2) !important; margin-top: 8px; }
+.result-grid { gap: 10px !important; }
+.result-item {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--shadow-card);
+  padding: 16px 10px !important;
+}
+.result-item .val { font-family: inherit !important; font-size: 27px !important; font-weight: 700 !important; letter-spacing: -.04em; }
+.result-item .lbl { font-size: 11px !important; color: var(--text2) !important; margin-top: 4px; }
+.val-correct { color: var(--ios-green) !important; }
+.val-wrong { color: var(--ios-red) !important; }
+.val-blank { color: var(--text2) !important; }
+
+/* Study feedback */
+.study-feedback {
+  border-radius: 12px !important;
+  margin-top: 14px !important;
+}
+
+/* Steppers and ranges */
+.stepper {
+  background: var(--surface2) !important;
+  border-radius: 12px !important;
+  padding: 4px !important;
+}
+.stepper-btn {
+  width: 42px !important; height: 42px !important;
+  border-radius: 10px !important;
+  background: var(--surface) !important;
+  color: var(--accent) !important;
+}
+.stepper-val { font-family: inherit !important; font-size: 20px !important; font-weight: 700 !important; }
+.range-row { gap: 12px !important; }
+.range-val { min-width: 58px; color: var(--accent) !important; font-weight: 700 !important; }
+input[type="range"] { accent-color: var(--accent); min-height: auto; padding: 0 !important; box-shadow: none; }
+
+/* Editor / lists */
+.empty-state {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--shadow-card);
+  color: var(--text2) !important;
+}
+.inline-num {
+  color: var(--accent) !important;
+  font-weight: 650 !important;
+}
+.divider { background: var(--border) !important; }
+
+/* Navigation */
+.bottom-nav {
+  height: var(--nav-height) !important;
+  min-height: var(--nav-height) !important;
+  background: color-mix(in srgb, var(--bg) 78%, transparent) !important;
+  border-top: 1px solid var(--border) !important;
+  box-shadow: 0 -8px 28px rgba(0,0,0,.06);
+  backdrop-filter: saturate(180%) blur(24px) !important;
+  -webkit-backdrop-filter: saturate(180%) blur(24px) !important;
+}
+.nav-btn {
+  height: var(--nav-base-height) !important;
+  padding: 8px 4px 0 !important;
+  color: var(--text3) !important;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+.nav-btn svg { width: 24px !important; height: 24px !important; margin-bottom: 3px !important; }
+.nav-btn.active { color: var(--accent) !important; }
+.nav-btn.active svg { filter: none !important; }
+.nav-btn:active { transform: scale(.92) !important; }
+
+/* Modales — se conserva exactamente la geometría del HTML original.
+   Solo se modifica su apariencia visual. */
+.modal-overlay {
+  background: rgba(0,0,0,.38) !important;
+  backdrop-filter: blur(8px) saturate(120%) !important;
+  -webkit-backdrop-filter: blur(8px) saturate(120%) !important;
+}
+.modal-sheet {
+  /* NO tocar width, align-self, flex, margin, max-height ni transform:
+     el posicionamiento inferior pertenece al sistema original de modales. */
+  background: var(--surface) !important;
+  border-top-left-radius: 24px !important;
+  border-top-right-radius: 24px !important;
+  border: 1px solid var(--border) !important;
+  border-bottom: none !important;
+  box-shadow: 0 -8px 30px rgba(0,0,0,.12) !important;
+}
+.modal-handle {
+  width: 36px !important; height: 5px !important;
+  border-radius: 99px !important;
+  background: var(--surface3) !important;
+}
+.modal-title { font-size: 20px !important; font-weight: 700 !important; letter-spacing: -.025em; color: var(--text) !important; }
+
+/* Toast */
+.toast {
+  border-radius: 13px !important;
+  background: color-mix(in srgb, var(--surface) 92%, transparent) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-float) !important;
+  backdrop-filter: blur(20px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(160%) !important;
+}
+
+/* Setup */
+.setup-box {
+  width: min(100%, 420px) !important;
+  padding: 30px 22px !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 22px !important;
+  box-shadow: var(--shadow-card) !important;
+}
+.setup-logo .big {
+  font-family: inherit !important;
+  font-size: 38px !important;
+  font-weight: 750 !important;
+  letter-spacing: -.055em !important;
+  color: var(--text) !important;
+}
+.setup-logo .sub { color: var(--text2) !important; font-size: 15px !important; }
+
+/* PWA banner */
+#pwa-banner {
+  background: color-mix(in srgb, var(--surface) 94%, transparent) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 18px !important;
+  box-shadow: var(--shadow-float) !important;
+  backdrop-filter: blur(24px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
+}
+.pwa-text strong { color: var(--text) !important; }
+.pwa-text span { color: var(--text2) !important; }
+.pwa-close { color: var(--text3) !important; }
+.pwa-icon { background: var(--accent) !important; border-radius: 12px !important; }
+
+/* Keep important custom overlays above everything */
+#challenge-fail-overlay, #modal-challenge-countdown { z-index: 10000 !important; }
+
+/* Desktop: retain native-phone visual proportions without looking like a stretched website */
+@media (min-width: 700px) {
+  .screen { padding-left: max(20px, calc((100vw - 620px) / 2)); padding-right: max(20px, calc((100vw - 620px) / 2)); }
+  .bottom-nav { padding-left: max(0px, calc((100vw - 620px) / 2)); padding-right: max(0px, calc((100vw - 620px) / 2)); }
+  .mode-grid { grid-template-columns: 1fr !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+
+
+/* ================================================================
+   APPLE UI — CATEGORÍAS, PREGUNTAS Y SELECTORES
+   Mantiene intacta la lógica y la estructura funcional.
+   ================================================================ */
+
+/* Categorías: filas agrupadas, limpias y discretas, estilo Ajustes */
+.category-item {
+  position: relative;
+  min-height: 56px;
+  padding: 13px 14px 13px 16px !important;
+  margin-bottom: 1px !important;
+  gap: 12px !important;
+  background: var(--surface) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  color: var(--text);
+}
+.category-item:first-child { border-radius: 13px 13px 0 0 !important; }
+.category-item:last-child { border-radius: 0 0 13px 13px !important; margin-bottom: 12px !important; }
+.category-item:only-child { border-radius: 13px !important; }
+.category-item::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--border);
+}
+.category-item:last-child::after { display: none; }
+.category-item:active { background: var(--surface2) !important; }
+.category-name {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  letter-spacing: -.01em;
+}
+.category-count {
+  min-width: 30px;
+  font-family: inherit !important;
+  font-size: 13px !important;
+  color: var(--text3) !important;
+  text-align: right;
+}
+
+/* Filas con swipe: conservar la mecánica, eliminar apariencia de tarjeta independiente */
+.swipe-row {
+  border-radius: 13px !important;
+  margin-bottom: 12px !important;
+  background: var(--surface) !important;
+}
+.swipe-row .category-item { border-radius: 13px !important; margin-bottom: 0 !important; }
+.swipe-row .category-item::after { display: none; }
+
+/* Selector de categorías: grupo iOS con checkbox circular */
+.sel-cat-card {
+  background: var(--surface) !important;
+  border: 0 !important;
+  border-radius: 13px !important;
+  margin-bottom: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--border) 70%, transparent) !important;
+}
+.sel-cat-card.has-selection {
+  box-shadow: 0 0 0 1.5px var(--accent) !important;
+}
+.sel-cat-row {
+  min-height: 58px;
+  padding: 13px 15px !important;
+  gap: 12px !important;
+}
+.sel-cat-row:active { background: var(--surface2) !important; }
+.sel-cat-toggle,
+.sel-subcat-toggle {
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  border: 2px solid var(--text3) !important;
+  background: transparent !important;
+  color: white;
+  transition: background .18s ease, border-color .18s ease, transform .18s ease;
+}
+.sel-cat-toggle.on,
+.sel-subcat-toggle.on {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+.sel-cat-toggle.partial,
+.sel-subcat-toggle.auto {
+  background: var(--surface3) !important;
+  border-color: var(--text3) !important;
+}
+.sel-cat-toggle svg,
+.sel-subcat-toggle svg {
+  width: 12px !important;
+  height: 12px !important;
+}
+.sel-cat-name {
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  letter-spacing: -.01em;
+}
+.sel-cat-count {
+  font-family: inherit !important;
+  font-size: 12px !important;
+  color: var(--text3) !important;
+}
+.sel-subcat-list {
+  margin: 0 !important;
+  border-top: 1px solid var(--border) !important;
+  background: color-mix(in srgb, var(--surface2) 45%, var(--surface)) !important;
+}
+.sel-subcat-row {
+  min-height: 48px;
+  padding: 10px 15px 10px 49px !important;
+  gap: 10px !important;
+  border-bottom: 1px solid var(--border) !important;
+}
+.sel-subcat-row:last-child { border-bottom: 0 !important; }
+.sel-subcat-row:active { background: var(--surface2) !important; }
+.sel-subcat-name {
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  color: var(--text2) !important;
+}
+.sel-subcat-count {
+  font-size: 12px !important;
+  color: var(--text3) !important;
+  font-family: inherit !important;
+}
+
+/* Pregunta: una única superficie, jerarquía tipográfica y respuestas tipo lista */
+.q-card {
+  background: var(--surface) !important;
+  border: 0 !important;
+  border-radius: 18px !important;
+  padding: 22px 18px 18px !important;
+  margin-bottom: 16px !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,.06), 0 0 0 1px color-mix(in srgb, var(--border) 72%, transparent) !important;
+}
+[data-theme="light"] .q-card {
+  box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 0 0 1px rgba(0,0,0,.06) !important;
+}
+.q-num {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: var(--text3) !important;
+  letter-spacing: .01em !important;
+  margin-bottom: 14px !important;
+}
+.q-text {
+  font-size: 20px !important;
+  line-height: 1.38 !important;
+  font-weight: 600 !important;
+  letter-spacing: -.025em !important;
+  margin-bottom: 22px !important;
+}
+
+/* Respuestas: más parecidas a una lista de selección nativa de iOS */
+.answer-opt {
+  min-height: 54px !important;
+  padding: 10px 12px !important;
+  margin-bottom: 8px !important;
+  gap: 12px !important;
+  border-radius: 13px !important;
+  background: var(--surface2) !important;
+  border: 1px solid transparent !important;
+  box-shadow: none !important;
+  transition: background .16s ease, border-color .16s ease, transform .12s ease !important;
+}
+.answer-opt:active { transform: scale(.985) !important; }
+.answer-opt .opt-letter {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  background: var(--surface) !important;
+  color: var(--text2) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 0 0 1px var(--border) !important;
+}
+.answer-opt .opt-text {
+  flex: 1;
+  font-size: 15px !important;
+  line-height: 1.38 !important;
+  color: var(--text) !important;
+}
+.answer-opt.selected {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface)) !important;
+  border-color: color-mix(in srgb, var(--accent) 38%, transparent) !important;
+}
+.answer-opt.selected .opt-letter {
+  background: var(--accent) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+.answer-opt.correct {
+  background: color-mix(in srgb, var(--success) 10%, var(--surface)) !important;
+  border-color: color-mix(in srgb, var(--success) 36%, transparent) !important;
+}
+.answer-opt.correct .opt-letter {
+  background: var(--success) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+.answer-opt.wrong {
+  background: color-mix(in srgb, var(--danger) 9%, var(--surface)) !important;
+  border-color: color-mix(in srgb, var(--danger) 36%, transparent) !important;
+}
+.answer-opt.wrong .opt-letter {
+  background: var(--danger) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+
+/* Inputs y desplegables: apariencia consistente con formularios de iOS */
+input, textarea, select {
+  min-height: 48px;
+  border-radius: 12px !important;
+  background: var(--surface2) !important;
+  border: 1px solid transparent !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 65%, transparent) !important;
+  font-family: inherit !important;
+}
+select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  padding-right: 42px !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2386868b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 13px center !important;
+  background-size: 17px 17px !important;
+}
+select:focus {
+  box-shadow: inset 0 0 0 1.5px var(--accent), 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent) !important;
+}
+select option {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+}
+
+/* El selector concreto de respuesta correcta tiene más peso visual */
+#edit-correct {
+  font-weight: 500 !important;
+  color: var(--text) !important;
+}
+#edit-correct:has(option[value=""]:checked) {
+  color: var(--text3) !important;
+}
+
+/* En móvil real, el selector del sistema sigue siendo el responsable del menú */
+@media (max-width: 600px) {
+  .q-card { padding: 20px 16px 16px !important; border-radius: 16px !important; }
+  .q-text { font-size: 19px !important; }
+  .category-item { min-height: 54px; }
+}
+
+
+/* Ordenación: chip seleccionado en azul */
+.sort-chip.active {
+  background: var(--ios-blue) !important;
+  border-color: var(--ios-blue) !important;
+  color: #fff !important;
+}
+
+
+/* Mayor presencia visual para categorías y preguntas */
+.category-name {
+  font-weight: 700 !important;
+}
+.q-editor-text {
+  font-weight: 700 !important;
+}
+
 </style>
 </head>
 <body>
@@ -1360,7 +2259,7 @@
 
   <div class="btn-row" style="margin-bottom:10px;">
     <button class="btn btn-secondary" onclick="goHome()">Inicio</button>
-    <button class="btn" style="background:var(--danger);color:white;" onclick="repeatChallenge()">
+    <button class="btn btn-primary" style="background:var(--danger);color:white;" onclick="repeatChallenge()">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
       Repetir
     </button>
@@ -1639,7 +2538,7 @@
     <h1>Editor</h1>
   </div>
   <div class="btn-row" style="margin-bottom:16px;">
-    <button class="btn btn-success" onclick="openNewCategory()">
+    <button class="btn btn-primary" onclick="openNewCategory()">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
       Nueva categoría
     </button>
@@ -1715,7 +2614,7 @@
     </div>
   </div>
 
-  <button id="btn-new-question" class="btn btn-success" onclick="openAddQuestion(currentEditorCat, currentEditorSubcat)" style="margin-bottom:14px;display:none;">
+  <button id="btn-new-question" class="btn btn-primary" onclick="openAddQuestion(currentEditorCat, currentEditorSubcat)" style="margin-bottom:14px;display:none;">
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
     Nueva pregunta
   </button>
@@ -2007,8 +2906,8 @@
     <div class="modal-handle"></div>
     <div style="text-align:center;padding-bottom:16px;">
       <div style="font-size:36px;margin-bottom:6px;">📚</div>
-      <div style="font-size:19px;font-weight:700;color:var(--accent3);margin-bottom:4px;">MODO ESTUDIO</div>
-      <div style="font-size:13px;color:var(--text2);">Elige cómo quieres estudiar</div>
+      <div style="font-size:20px;font-weight:700;color:var(--accent3);margin-bottom:4px;">MODO ESTUDIO</div>
+      <div style="font-size:14px;color:var(--text2);">Elige cómo quieres estudiar</div>
     </div>
 
     <div class="mode-subopt" onclick="closeModal('modal-study-intro'); goStudy()" style="margin-bottom:8px;">
@@ -2053,8 +2952,8 @@
     <div class="modal-handle"></div>
     <div style="text-align:center;padding-bottom:16px;">
       <div style="font-size:36px;margin-bottom:6px;">📝</div>
-      <div style="font-size:19px;font-weight:700;color:var(--accent);margin-bottom:4px;">MODO EXAMEN</div>
-      <div style="font-size:13px;color:var(--text2);">Elige el tipo de examen</div>
+      <div style="font-size:20px;font-weight:700;color:var(--accent);margin-bottom:4px;">MODO EXAMEN</div>
+      <div style="font-size:14px;color:var(--text2);">Elige el tipo de examen</div>
     </div>
 
     <div class="mode-subopt" onclick="closeModal('modal-exam-intro'); goExamConfig('real')" style="margin-bottom:8px;">
@@ -2083,8 +2982,8 @@
     <div class="modal-handle"></div>
     <div style="text-align:center;padding-bottom:16px;">
       <div style="font-size:36px;margin-bottom:6px;">⚡</div>
-      <div style="font-size:19px;font-weight:700;color:var(--danger);margin-bottom:4px;">MODO DESAFÍO</div>
-      <div style="font-size:13px;color:var(--text2);">Elige tu modo de juego</div>
+      <div style="font-size:20px;font-weight:700;color:var(--danger);margin-bottom:4px;">MODO DESAFÍO</div>
+      <div style="font-size:14px;color:var(--text2);">Elige tu modo de juego</div>
     </div>
 
     <div class="mode-subopt" onclick="startChallengeCountdown('normal')" style="margin-bottom:8px;">
@@ -2214,7 +3113,7 @@
 
     <div class="divider"></div>
     <div class="section-title" style="margin-top:4px;">Exportar datos</div>
-    <button class="btn btn-success" onclick="exportData()" style="margin-bottom:16px;">
+    <button class="btn btn-secondary" onclick="exportData()" style="margin-bottom:16px;">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
       Descargar JSON
     </button>
@@ -2254,7 +3153,7 @@
     <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6;">
       Elige cómo aplicar el archivo de estadísticas.
     </p>
-    <button class="btn btn-primary" onclick="chooseStatsImportMode('aggregate')" style="margin-bottom:10px;">
+    <button class="btn btn-secondary" onclick="chooseStatsImportMode('aggregate')" style="margin-bottom:10px;">
       Solo contadores agregados
     </button>
     <button class="btn btn-secondary" onclick="chooseStatsImportMode('replace')" style="margin-bottom:10px;">
@@ -2263,7 +3162,7 @@
     <button class="btn btn-secondary" onclick="chooseStatsImportMode('merge-history')" style="margin-bottom:10px;">
       Fusionar también historiales
     </button>
-    <button class="btn btn-secondary" onclick="closeModal('modal-stats-import-mode')">Cancelar</button>
+    <button class="btn btn-primary" onclick="closeModal('modal-stats-import-mode')">Cancelar</button>
   </div>
 </div>
 
@@ -3092,7 +3991,7 @@ function renderExamQuestion() {
   const total = examQuestions.length;
   const isLast = examIndex === total - 1;
 
-  const subcatBadge = q.subcat ? `<span class="badge" style="background:rgba(110,255,184,.1);color:var(--accent3);margin-left:4px;">${esc(q.subcat)}</span>` : '';
+  const subcatBadge = q.subcat ? `<span class="subCatBadge">${esc(q.subcat)}</span>` : '';
   DOM['exam-q-num'].innerHTML =
     `<span>Pregunta ${examIndex+1}</span><span class="badge badge-accent">${esc(q.cat)}</span>${subcatBadge}`;
   DOM['exam-q-text'].textContent = q.question;
@@ -3593,7 +4492,7 @@ function renderStudyQuestion() {
   studyAnswered = false;
   const q = studyQueue[studyIndex];
   const total = studyQueue.length;
-  const subcatBadge = q.subcat ? `<span class="badge" style="background:rgba(110,255,184,.1);color:var(--accent3);margin-left:4px;">${esc(q.subcat)}</span>` : '';
+  const subcatBadge = q.subcat ? `<span class="subCatBadge" ">${esc(q.subcat)}</span>` : '';
   DOM['study-q-num'].innerHTML =
     `<span>Pregunta ${studyIndex+1}/${total}</span><span class="badge badge-accent">${esc(q.cat)}</span>${subcatBadge}`;
   DOM['study-q-text'].textContent = q.question;
@@ -5393,9 +6292,9 @@ function buildStudyCard(e, compact) {
 
   const pill = `
     <div style="flex-shrink:0;width:44px;height:44px;border-radius:10px;
-      background:rgba(0,0,0,.2);border:2px solid ${pctColor};
+      background:${pctColor};
       display:flex;align-items:center;justify-content:center;
-      font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${pctColor};">
+      font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:white;">
       ${pct}%
     </div>`;
 
@@ -6149,7 +7048,7 @@ function buildChallengeHistoryCard(e) {
   const card = document.createElement('div');
   card.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;';
   card.innerHTML = `
-    <div style="flex-shrink:0;width:44px;height:44px;border-radius:10px;background:rgba(0,0,0,.2);border:2px solid ${scoreColor};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${scoreColor};">${score}</div>
+    <div style="flex-shrink:0;width:44px;height:44px;border-radius:10px;background:#f2f2f7;border:2px solid ${scoreColor};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${scoreColor};">${score}</div>
     <div style="flex:1;min-width:0;">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap;">
         <span style="font-size:10px;font-weight:600;color:${modeColor};">${modeLabel}</span>
