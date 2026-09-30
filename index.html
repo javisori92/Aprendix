@@ -2578,10 +2578,6 @@ select option {
   <div id="editor-empty" class="empty-state" style="display:none;">
     <div class="icon">📚</div>
     <p>No hay categorías todavía.<br>Crea tu primera categoría.</p>
-    <button class="btn btn-success" onclick="openNewCategory()" style="margin-top:16px;">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
-      Nueva categoría
-    </button>
   </div>
 </div>
 
@@ -7250,7 +7246,7 @@ let fcQueue = [], fcIndex = 0, fcKnown = 0, fcUnknown = 0;
 let fcOriginalPool = [], fcBadge = '';
 function goFlashcards() {
   const pool = db.questions;
-  if (pool.length === 0) { showToast('No hay preguntas', 'error'); return; }
+  if (pool.length === 0) { showToast('No hay preguntas. Añade preguntas primero.', 'error'); return; }
   startFlashcards(pool, 'Repaso rápido');
 }
 
@@ -7317,6 +7313,8 @@ function confirmExitFlashcard() {
 let _errorPeriodDays = null; // null = all time
 
 function goErrorReview() {
+  const pool = db.questions;
+  if (pool.length === 0) { showToast('No hay preguntas. Añade preguntas primero.', 'error'); return; }
   renderErrorReview();
   showScreen('screen-error-review');
 }
