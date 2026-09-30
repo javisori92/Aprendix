@@ -456,7 +456,7 @@
 
   .mode-subopts.open { display: flex; }
   .mode-subopt {
-    background: #efefef; border: 1px solid var(--border);
+    background: var(--surface); border: 1px solid var(--border);
     border-radius: var(--radius-sm); padding: 12px 16px;
     display: flex; align-items: center; gap: 12px;
     cursor: pointer; transition: all .15s;
@@ -1752,7 +1752,7 @@ input[type="range"] { accent-color: var(--accent); min-height: auto; padding: 0 
   border-radius: 13px !important; 
   border: 1px var(--border) solid !important;
   margin-bottom: 0 !important; 
-  background: white !important;
+  background: var(--surface) !important;
 }
 .swipe-row .category-item::after { display: none; }
 
@@ -6214,7 +6214,7 @@ function buildHistoryCard(e, compact) {
   // Note pill
   const pill = `
     <div style="flex-shrink:0;width:44px;height:44px;border-radius:10px;
-      background:#f2f2f7;border:2px solid ${noteColor};
+      background:var(--bg);border:2px solid ${noteColor};
       display:flex;align-items:center;justify-content:center;
       font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${noteColor};">
       ${noteStr}
@@ -6310,7 +6310,7 @@ function buildStudyCard(e, compact) {
   const pill = `
     <div style="flex-shrink:0;width:44px;height:44px;border-radius:10px;
       border: 2px solid ${pctColor};
-      background:#f2f2f7;
+      background:var(--bg);
       display:flex;align-items:center;justify-content:center;
       font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${pctColor};">
       ${pct}%
@@ -7066,7 +7066,7 @@ function buildChallengeHistoryCard(e) {
   const card = document.createElement('div');
   card.style.cssText = 'display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:8px;';
   card.innerHTML = `
-    <div style="flex-shrink:0;width:44px;height:44px;border-radius:10px;background:#f2f2f7;border:2px solid ${scoreColor};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${scoreColor};">${score}</div>
+    <div style="flex-shrink:0;width:44px;height:44px;border-radius:10px;background:var(--bg);border:2px solid ${scoreColor};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${scoreColor};">${score}</div>
     <div style="flex:1;min-width:0;">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap;">
         <span style="font-size:10px;font-weight:600;color:${modeColor};">${modeLabel}</span>
