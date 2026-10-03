@@ -4082,7 +4082,7 @@ function confirmFinishExam() {
   const blanks = examAnswers.filter(a => a === null).length;
   const flagged = _examFlagged.size;
   let msg = '¿Estás seguro de que quieres finalizar el examen y entregarlo?';
-  if (blanks > 0) msg += `\n\n${blanks} pregunta${blanks===1?'':'s'} sin responder (contarán como en blanco).`;
+  if (blanks > 0) msg += `\n\nHay ${blanks} pregunta${blanks===1?'':'s'} sin responder (contarán como en blanco).`;
   if (flagged > 0) msg += `\n🚩 ${flagged} pregunta${flagged===1?'':'s'} marcada${flagged===1?'':'s'} para revisar.`;
   showConfirm(
     '¿Entregar examen?',
@@ -4156,7 +4156,7 @@ function finishExam() {
   // Show/hide "Realizar nuevo examen" button
   const isPersonalizado = lastExamConfig && lastExamConfig.mode === 'personalizado';
   document.getElementById('btn-new-exam').style.display = isPersonalizado ? '' : 'none';
-
+  
   recordExamStats(examQuestions, examAnswers, note10, elapsed);
 
   // If timeout, skip the confirmation dialog and go directly to results
@@ -5959,8 +5959,11 @@ function saveStats(st) {
 
 function recordExamStats(questions, answers, note10, elapsed) {
   const st = loadStats();
-  st.examsCompleted = (st.examsCompleted || 0) + 1;
-  if (st.bestScore10 === null || note10 > st.bestScore10) st.bestScore10 = note10;
+  if(lastExamConfig && lastExamConfig.mode === 'real'){
+    st.examsCompleted = (st.examsCompleted || 0) + 1;
+    if (st.bestScore10 === null || note10 > st.bestScore10) st.bestScore10 = note10;
+  }
+  
   // Exam history (last 50) — save correct/wrong/blank/cat for rich display
   if (!st.examHistory) st.examHistory = [];
   let hCorrect = 0, hWrong = 0, hBlank = 0;
