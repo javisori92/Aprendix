@@ -1976,6 +1976,77 @@ select option {
   font-weight: 700 !important;
 }
 
+
+/* ================================================================
+   AJUSTES FINALES: tamaños de texto + scroll en preguntas largas
+   ================================================================ */
+
+/* --- SCROLL: los hijos de una pantalla (flex column con overflow) no deben
+   encogerse; antes .q-card (overflow:hidden) se comprimía y recortaba las respuestas --- */
+.screen > *,
+#exam-question-wrap,
+#exam-question-wrap > * { flex-shrink: 0 !important; }
+.q-card { overflow: visible !important; flex-shrink: 0 !important; min-height: auto !important; }
+.q-card::before { display: none !important; }
+#exam-question-wrap { display: block; width: 100%; }
+.screen {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}
+.screen::after { content: ''; display: block; flex: 0 0 16px; height: 16px; }
+.answer-opt { height: auto !important; flex-shrink: 0 !important; }
+.answer-opt .opt-text { min-width: 0; overflow-wrap: anywhere; word-break: normal; }
+.q-text { overflow-wrap: anywhere; }
+
+/* --- TEXTOS MÁS GRANDES --- */
+body { font-size: 17px !important; }
+.q-num { font-size: 14px !important; }
+.q-text { font-size: 22px !important; line-height: 1.4 !important; }
+.answer-opt { min-height: 58px !important; }
+.answer-opt .opt-letter { width: 34px !important; height: 34px !important; font-size: 15px !important; }
+.answer-opt .opt-text { font-size: 17px !important; line-height: 1.4 !important; }
+.q-counter { font-size: 15px !important; }
+.timer-display { font-size: 15px !important; }
+.badge, .subCatBadge { font-size: 14px !important; min-height: 28px; }
+.btn { font-size: 17px !important; }
+.section-title { font-size: 15px !important; }
+.input-group label { font-size: 15px !important; }
+.chip, .sort-chip { font-size: 15px !important; }
+.page-header h1 { font-size: 26px !important; }
+.logo-sub, .setup-logo .sub { font-size: 16px !important; }
+.stat-label { font-size: 15px !important; }
+.mode-text h3 { font-size: 17px !important; }
+.mode-text p { font-size: 15px !important; }
+.settings-label { font-size: 17px !important; }
+.settings-sub { font-size: 14px !important; }
+.result-label { font-size: 15px !important; }
+.result-item .lbl { font-size: 13px !important; }
+.category-name, .sel-cat-name { font-size: 17px !important; }
+.category-count, .sel-cat-count { font-size: 14px !important; }
+.sel-subcat-name { font-size: 16px !important; }
+.sel-subcat-count { font-size: 14px !important; }
+.stat-q-text, .review-item .rq { font-size: 15px !important; }
+.review-row { font-size: 14px !important; }
+.stat-bar-name { font-size: 15px !important; }
+.stat-bar-pct { font-size: 14px !important; }
+.mode-subopt h4 { font-size: 17px !important; }
+.mode-subopt p { font-size: 15px !important; }
+.q-editor-text { font-size: 16px !important; }
+.study-feedback { font-size: 15px !important; line-height: 1.5 !important; }
+.empty-state { font-size: 16px !important; }
+.nav-btn { font-size: 11.5px !important; }
+.modal-title { font-size: 21px !important; }
+.pwa-text strong { font-size: 15px !important; }
+.pwa-text span { font-size: 13px !important; }
+input, textarea, select { font-size: 17px !important; }
+
+@media (max-width: 600px) {
+  .q-text { font-size: 21px !important; }
+  .answer-opt .opt-text { font-size: 17px !important; }
+  .q-card { padding: 20px 16px 16px !important; }
+}
+
 </style>
 </head>
 <body>
@@ -1992,7 +2063,7 @@ select option {
       <div class="big">Aprendix</div>
       <div class="sub">Tu app de estudio personal</div>
     </div>
-    <p style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6;">
+    <p style="font-size:15px;color:var(--text2);margin-bottom:20px;line-height:1.6;">
       Bienvenido. Aprendix guarda tus preguntas en un archivo JSON local.<br><br>
       Pulsa el botón para seleccionar o crear el archivo de datos.
     </p>
@@ -2001,11 +2072,11 @@ select option {
       Seleccionar archivo de datos
     </button>
     <div style="margin-top:12px;">
-      <button class="btn btn-secondary" onclick="setupNewFile()" style="font-size:13px;">
+      <button class="btn btn-secondary" onclick="setupNewFile()" style="font-size:15px;">
         Continuar sin archivo (datos en memoria)
       </button>
     </div>
-    <p style="font-size:11px;color:var(--text3);margin-top:14px;text-align:center;line-height:1.5;">
+    <p style="font-size:13px;color:var(--text3);margin-top:14px;text-align:center;line-height:1.5;">
       En Safari/iOS, usa "Continuar sin archivo" y exporta/importa manualmente desde el editor.
     </p>
   </div>
@@ -2156,17 +2227,17 @@ select option {
   <div class="q-card" id="fc-card" style="cursor:pointer;user-select:none;-webkit-user-select:none;" onclick="fcReveal()">
     <div class="q-num" id="fc-num"></div>
     <div class="q-text" id="fc-question"></div>
-    <div id="fc-hint" style="font-size:12px;color:var(--text3);margin-top:12px;text-align:center;">Toca para ver respuesta</div>
+    <div id="fc-hint" style="font-size:14px;color:var(--text3);margin-top:12px;text-align:center;">Toca para ver respuesta</div>
     <div id="fc-answer" style="display:none;margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-      <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Respuesta correcta</div>
+      <div style="font-size:13px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Respuesta correcta</div>
       <div id="fc-answer-text" style="font-size:15px;font-weight:600;color:var(--success);"></div>
     </div>
   </div>
   <div id="fc-actions" style="display:none;margin-top:12px;">
-    <div style="font-size:12px;color:var(--text3);text-align:center;margin-bottom:10px;">¿La sabías?</div>
+    <div style="font-size:14px;color:var(--text3);text-align:center;margin-bottom:10px;">¿La sabías?</div>
     <div style="display:flex;gap:10px;">
-      <button class="btn" style="flex:1;background:rgba(255,79,110,.15);color:var(--danger);font-size:14px;" onclick="fcAnswer(false)">✗ No la sabía</button>
-      <button class="btn" style="flex:1;background:rgba(79,255,170,.15);color:var(--success);font-size:14px;" onclick="fcAnswer(true)">✓ La sabía</button>
+      <button class="btn" style="flex:1;background:rgba(255,79,110,.15);color:var(--danger);font-size:16px;" onclick="fcAnswer(false)">✗ No la sabía</button>
+      <button class="btn" style="flex:1;background:rgba(79,255,170,.15);color:var(--success);font-size:16px;" onclick="fcAnswer(true)">✓ La sabía</button>
     </div>
   </div>
 </div>
@@ -2197,7 +2268,7 @@ select option {
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
     </button>
     <h1 style="font-size:18px;">Repaso de errores</h1>
-    <span id="error-review-count" style="font-size:12px;color:var(--text3);margin-left:auto;"></span>
+    <span id="error-review-count" style="font-size:14px;color:var(--text3);margin-left:auto;"></span>
   </div>
   <div id="error-review-filters" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
     <button class="sort-chip active" data-period="all" onclick="setErrorPeriod(this,'all')">Todos</button>
@@ -2229,8 +2300,8 @@ select option {
   <div id="challenge-total-timer-wrap" style="display:none;text-align:center;font-size:32px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--accent4);margin-bottom:10px;letter-spacing:2px;">60</div>
 
   <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-    <div class="badge" id="challenge-mode-badge" style="background:rgba(255,79,110,.15);color:var(--danger);font-size:12px;padding:6px 12px;">⚡ Normal</div>
-    <div style="font-size:12px;color:var(--text3);">Récord: <span id="challenge-record-live" style="color:var(--accent4);font-weight:700;">0</span></div>
+    <div class="badge" id="challenge-mode-badge" style="background:rgba(255,79,110,.15);color:var(--danger);font-size:14px;padding:6px 12px;">⚡ Normal</div>
+    <div style="font-size:14px;color:var(--text3);">Récord: <span id="challenge-record-live" style="color:var(--accent4);font-weight:700;">0</span></div>
   </div>
 
   <!-- Extremo: per-question countdown bar -->
@@ -2251,10 +2322,10 @@ select option {
     <h1>Desafío terminado</h1>
   </div>
   <div style="text-align:center;padding:16px 0 16px;">
-    <div id="ch-res-mode-badge" style="display:inline-block;font-size:11px;font-weight:600;padding:4px 14px;border-radius:20px;background:rgba(255,79,110,.15);color:var(--danger);margin-bottom:12px;">⚡ Normal</div>
+    <div id="ch-res-mode-badge" style="display:inline-block;font-size:13px;font-weight:600;padding:4px 14px;border-radius:20px;background:rgba(255,79,110,.15);color:var(--danger);margin-bottom:12px;">⚡ Normal</div>
     <div id="ch-res-icon" style="font-size:56px;margin-bottom:12px;">💥</div>
     <div id="ch-res-score" style="font-size:64px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--danger);line-height:1;">0</div>
-    <div id="ch-res-subtitle" style="font-size:13px;color:var(--text2);margin-top:6px;">preguntas seguidas sin fallar</div>
+    <div id="ch-res-subtitle" style="font-size:15px;color:var(--text2);margin-top:6px;">preguntas seguidas sin fallar</div>
   </div>
 
   <div class="home-stats" style="margin-bottom:20px;">
@@ -2269,9 +2340,9 @@ select option {
   </div>
 
   <div class="card" id="ch-failed-card" style="margin-bottom:14px;">
-    <div class="q-text" style="font-size:13px;font-weight:400;color:var(--text2);margin-bottom:10px;">Fallaste en:</div>
-    <div id="ch-failed-q" style="font-size:14px;font-weight:500;line-height:1.5;margin-bottom:10px;"></div>
-    <div id="ch-failed-answers" style="font-size:13px;line-height:1.8;"></div>
+    <div class="q-text" style="font-size:15px;font-weight:400;color:var(--text2);margin-bottom:10px;">Fallaste en:</div>
+    <div id="ch-failed-q" style="font-size:16px;font-weight:500;line-height:1.5;margin-bottom:10px;"></div>
+    <div id="ch-failed-answers" style="font-size:15px;line-height:1.8;"></div>
   </div>
 
   <div class="btn-row" style="margin-bottom:10px;">
@@ -2294,7 +2365,7 @@ select option {
 
   <!-- Select all / none toggle -->
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-    <span style="font-size:13px;color:var(--text2);">Categorías seleccionadas</span>
+    <span style="font-size:15px;color:var(--text2);">Categorías seleccionadas</span>
     <div style="display:flex;gap:8px;">
       <button class="sort-chip" id="study-sel-none" onclick="studySelectAll(false)">Ninguna</button>
       <button class="sort-chip active" id="study-sel-all" onclick="studySelectAll(true)">Todas</button>
@@ -2305,7 +2376,7 @@ select option {
 
   <div id="study-config-info" class="card" style="margin-bottom:14px;display:none;">
     <div style="display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-size:13px;color:var(--text2);">Preguntas seleccionadas</span>
+      <span style="font-size:15px;color:var(--text2);">Preguntas seleccionadas</span>
       <span class="inline-num" id="study-config-count">0</span>
     </div>
   </div>
@@ -2328,7 +2399,7 @@ select option {
   <!-- REAL MODE -->
   <div id="config-real">
     <div class="card">
-      <p style="font-size:13px;color:var(--text2);line-height:1.6;">
+      <p style="font-size:15px;color:var(--text2);line-height:1.6;">
         El exámen real selecciona <span class="inline-num">40</span> preguntas aleatorias de la categoría elegida con un tiempo límite de <span class="inline-num">50 minutos</span>. <br>Sistema de puntuación: <span class="inline-num">+0.25</span> correctas, <span class="inline-num">−0.08</span> falladas, <span class="inline-num">0</span> en blanco.
       </p>
     </div>
@@ -2345,7 +2416,7 @@ select option {
 
     <!-- Select all / none toggle — igual que en Estudio personalizado -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-      <span style="font-size:13px;color:var(--text2);">Categorías seleccionadas</span>
+      <span style="font-size:15px;color:var(--text2);">Categorías seleccionadas</span>
       <div style="display:flex;gap:8px;">
         <button class="sort-chip" id="exam-sel-none" onclick="examSelectAll(false)">Ninguna</button>
         <button class="sort-chip" id="exam-sel-all" onclick="examSelectAll(true)">Todas</button>
@@ -2411,7 +2482,7 @@ select option {
       <div id="exam-answers"></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:4px;align-items:center;">
-      <button id="btn-prev" onclick="prevQuestion()" style="background:none;border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text2);cursor:pointer;touch-action:manipulation;display:none;font-family:'Sora',sans-serif;font-size:13px;">
+      <button id="btn-prev" onclick="prevQuestion()" style="background:none;border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text2);cursor:pointer;touch-action:manipulation;display:none;font-family:'Sora',sans-serif;font-size:15px;">
         ← Anterior
       </button>
       <button class="btn btn-primary" id="btn-next" onclick="nextQuestion()" style="flex:1;">
@@ -2428,7 +2499,7 @@ select option {
 <div id="screen-review" class="screen">
   <div class="page-header">
     <h1>Revisión</h1>
-    <div style="font-size:13px;color:var(--text3);margin-left:auto;" id="review-counter"></div>
+    <div style="font-size:15px;color:var(--text3);margin-left:auto;" id="review-counter"></div>
   </div>
   <div id="review-list"></div>
   <button class="btn btn-secondary" onclick="goBackToResults()" style="margin-top:8px;">← Volver a resultados</button>
@@ -2462,13 +2533,13 @@ select option {
 
   <div id="res-avg-time-row" class="card" style="margin-bottom:14px;display:none;opacity:0;">
     <div style="display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-size:13px;color:var(--text2);">Tiempo medio por pregunta</span>
+      <span style="font-size:15px;color:var(--text2);">Tiempo medio por pregunta</span>
       <span style="font-size:16px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--accent);" id="res-avg-time">—</span>
     </div>
   </div>
   <div id="res-time-row" class="card" style="margin-bottom:14px;display:none;opacity:0;">
     <div style="display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-size:13px;color:var(--text2);">Tiempo empleado</span>
+      <span style="font-size:15px;color:var(--text2);">Tiempo empleado</span>
       <span class="inline-num" id="res-time">--</span>
     </div>
   </div>
@@ -2535,13 +2606,13 @@ select option {
   </div>
   <div class="card" style="margin-bottom:14px;" id="study-res-streak-card">
     <div style="display:flex;justify-content:space-between;align-items:center;">
-      <span style="font-size:13px;color:var(--text2);">Mejor racha de aciertos</span>
+      <span style="font-size:15px;color:var(--text2);">Mejor racha de aciertos</span>
       <span style="font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--accent4);" id="study-res-streak">0</span>
     </div>
   </div>
   <div class="card" style="margin-bottom:20px;" id="study-res-phase-card">
-    <div style="font-size:12px;color:var(--text3);margin-bottom:8px;">Preguntas que necesitan más repaso</div>
-    <div id="study-res-wrong-list" style="font-size:13px;color:var(--text2);line-height:1.8;"></div>
+    <div style="font-size:14px;color:var(--text3);margin-bottom:8px;">Preguntas que necesitan más repaso</div>
+    <div id="study-res-wrong-list" style="font-size:15px;color:var(--text2);line-height:1.8;"></div>
   </div>
   <div class="btn-row">
     <button class="btn btn-primary" onclick="goHome()">Inicio</button>
@@ -2599,7 +2670,7 @@ select option {
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
     </button>
     <div style="flex:1;min-width:0;">
-      <div style="font-size:11px;color:var(--text3);margin-bottom:1px;" id="editor-subcat-parent"></div>
+      <div style="font-size:13px;color:var(--text3);margin-bottom:1px;" id="editor-subcat-parent"></div>
       <h1 id="editor-subcat-title" style="font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></h1>
     </div>
   </div>
@@ -2607,7 +2678,7 @@ select option {
   <div id="editor-sort-bar" style="display:none;margin-bottom:12px;">
     <!-- Row 1: Group by -->
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-      <span style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text3);white-space:nowrap;min-width:58px;">Agrupar</span>
+      <span style="font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text3);white-space:nowrap;min-width:58px;">Agrupar</span>
       <div style="display:flex;gap:5px;">
         <button class="sort-chip active" id="grp-subcat" onclick="setEditorGroup('subcat')">Subcategoría</button>
         <button class="sort-chip" id="grp-none" onclick="setEditorGroup('none')">Sin grupos</button>
@@ -2615,7 +2686,7 @@ select option {
     </div>
     <!-- Row 2: Order by -->
     <div style="display:flex;align-items:center;gap:10px;">
-      <span style="font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text3);white-space:nowrap;min-width:58px;">Ordenar</span>
+      <span style="font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text3);white-space:nowrap;min-width:58px;">Ordenar</span>
       <div style="display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;padding-left:2px;-webkit-overflow-scrolling:touch;">
         <button class="sort-chip active" id="ord-recent" onclick="setEditorOrder('recent')">Recientes</button>
         <button class="sort-chip" id="ord-old" onclick="setEditorOrder('old')">Antiguas</button>
@@ -2641,7 +2712,7 @@ select option {
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
     </button>
     <h1 style="font-size:18px;">Historial Desafío</h1>
-    <span id="challenge-history-count" style="font-size:12px;color:var(--text3);margin-left:auto;"></span>
+    <span id="challenge-history-count" style="font-size:14px;color:var(--text3);margin-left:auto;"></span>
   </div>
   <div id="challenge-history-full-list"></div>
 </div>
@@ -2653,7 +2724,7 @@ select option {
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
     </button>
     <h1 style="font-size:18px;">Historial de estudio</h1>
-    <span id="study-history-count" style="font-size:12px;color:var(--text3);margin-left:auto;"></span>
+    <span id="study-history-count" style="font-size:14px;color:var(--text3);margin-left:auto;"></span>
   </div>
   <div id="study-history-full-list"></div>
 </div>
@@ -2665,7 +2736,7 @@ select option {
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5"/></svg>
     </button>
     <h1 style="font-size:18px;">Historial de exámenes</h1>
-    <span id="history-count" style="font-size:12px;color:var(--text3);margin-left:auto;"></span>
+    <span id="history-count" style="font-size:14px;color:var(--text3);margin-left:auto;"></span>
   </div>
   <div id="history-full-list"></div>
 </div>
@@ -2676,23 +2747,23 @@ select option {
     <h1>Estadísticas</h1>
   </div>
   <div class="btn-row" style="margin-bottom:16px;">
-    <button class="btn btn-secondary" onclick="importStats()" style="flex:1;font-size:12px;padding:10px 8px;">
+    <button class="btn btn-secondary" onclick="importStats()" style="flex:1;font-size:14px;padding:10px 8px;">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
       Importar
     </button>
-    <button class="btn btn-secondary" onclick="exportStats()" style="flex:1;font-size:12px;padding:10px 8px;">
+    <button class="btn btn-secondary" onclick="exportStats()" style="flex:1;font-size:14px;padding:10px 8px;">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
       Exportar
     </button>
-    <button class="btn btn-danger" onclick="confirmResetStats()" style="flex:1;font-size:12px;padding:10px 8px;">
+    <button class="btn btn-danger" onclick="confirmResetStats()" style="flex:1;font-size:14px;padding:10px 8px;">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:14px;height:14px"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
       Borrar
     </button>
   </div>
-  <p style="font-size:12px;color:var(--text3);margin:-8px 0 14px;line-height:1.5;">
+  <p style="font-size:14px;color:var(--text3);margin:-8px 0 14px;line-height:1.5;">
     Al pulsar <strong>Importar</strong> podrás elegir entre: sumar contadores, reemplazar estadísticas o fusionar historiales.
   </p>
-  <button class="btn btn-secondary" onclick="openCoverage()" style="margin-bottom:16px;font-size:12px;padding:10px 8px;">
+  <button class="btn btn-secondary" onclick="openCoverage()" style="margin-bottom:16px;font-size:14px;padding:10px 8px;">
     📊 Cobertura por categoría
   </button>
 
@@ -2749,16 +2820,16 @@ select option {
     <div class="section-title">📈 Rendimiento global</div>
     <div class="card" style="margin-bottom:12px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-        <span style="font-size:13px;color:var(--text2);">Precisión global</span>
+        <span style="font-size:15px;color:var(--text2);">Precisión global</span>
         <span class="inline-num" id="st-global-pct">—</span>
       </div>
       <div class="progress-bar-wrap" style="height:6px;">
         <div class="progress-bar" id="st-global-bar" style="width:0%;background:linear-gradient(90deg,var(--accent3),var(--accent));"></div>
       </div>
       <div style="display:flex;justify-content:space-between;margin-top:10px;">
-        <span style="font-size:12px;color:var(--success);" id="st-total-correct">0 correctas</span>
-        <span style="font-size:12px;color:var(--text2);" id="st-total-answered">0 total</span>
-        <span style="font-size:12px;color:var(--danger);" id="st-total-wrong">0 falladas</span>
+        <span style="font-size:14px;color:var(--success);" id="st-total-correct">0 correctas</span>
+        <span style="font-size:14px;color:var(--text2);" id="st-total-answered">0 total</span>
+        <span style="font-size:14px;color:var(--danger);" id="st-total-wrong">0 falladas</span>
       </div>
     </div>
 
@@ -2769,21 +2840,21 @@ select option {
     <!-- HISTORIAL DE NOTAS -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
       <div class="section-title" style="margin-bottom:0;">📊 Historial de notas</div>
-      <button id="btn-ver-historial" onclick="goHistory()" style="display:none;background:none;border:none;font-size:12px;color:var(--accent);font-family:'Sora',sans-serif;font-weight:600;cursor:pointer;padding:0;touch-action:manipulation;">Ver todo →</button>
+      <button id="btn-ver-historial" onclick="goHistory()" style="display:none;background:none;border:none;font-size:14px;color:var(--accent);font-family:'Sora',sans-serif;font-weight:600;cursor:pointer;padding:0;touch-action:manipulation;">Ver todo →</button>
     </div>
     <div id="st-history-chart" style="margin-bottom:20px;min-height:40px;"></div>
 
     <!-- HISTORIAL DE ESTUDIO -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
       <div class="section-title" style="margin-bottom:0;">📖 Historial de estudio</div>
-      <button id="btn-ver-historial-estudio" onclick="goStudyHistory()" style="display:none;background:none;border:none;font-size:12px;color:var(--accent);font-family:'Sora',sans-serif;font-weight:600;cursor:pointer;padding:0;touch-action:manipulation;">Ver todo →</button>
+      <button id="btn-ver-historial-estudio" onclick="goStudyHistory()" style="display:none;background:none;border:none;font-size:14px;color:var(--accent);font-family:'Sora',sans-serif;font-weight:600;cursor:pointer;padding:0;touch-action:manipulation;">Ver todo →</button>
     </div>
     <div id="st-study-history-list" style="margin-bottom:20px;min-height:40px;"></div>
 
     <!-- HISTORIAL DE DESAFÍO -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
       <div class="section-title" style="margin-bottom:0;">⚡ Historial Modo Desafío</div>
-      <button id="btn-ver-historial-desafio" onclick="goChallengeHistory()" style="display:none;background:none;border:none;font-size:12px;color:var(--accent);font-family:'Sora',sans-serif;font-weight:600;cursor:pointer;padding:0;touch-action:manipulation;">Ver todo →</button>
+      <button id="btn-ver-historial-desafio" onclick="goChallengeHistory()" style="display:none;background:none;border:none;font-size:14px;color:var(--accent);font-family:'Sora',sans-serif;font-weight:600;cursor:pointer;padding:0;touch-action:manipulation;">Ver todo →</button>
     </div>
     <div id="st-challenge-history-list" style="margin-bottom:20px;min-height:40px;"></div>
 
@@ -2823,9 +2894,9 @@ select option {
   <div class="modal-sheet">
     <div class="modal-handle"></div>
     <div class="modal-title">Importar desde texto</div>
-    <p style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6;">
+    <p style="font-size:14px;color:var(--text3);margin-bottom:10px;line-height:1.6;">
       Pega tus preguntas en este formato:<br>
-      <code style="background:var(--surface3);padding:2px 6px;border-radius:4px;font-size:11px;">1. Pregunta<br>A) Opción A<br>B) Opción B<br>C) Opción C<br>D) Opción D<br>Respuesta: A</code>
+      <code style="background:var(--surface3);padding:2px 6px;border-radius:4px;font-size:13px;">1. Pregunta<br>A) Opción A<br>B) Opción B<br>C) Opción C<br>D) Opción D<br>Respuesta: A</code>
     </p>
     <div class="input-group">
       <label>Categoría destino</label>
@@ -2840,7 +2911,7 @@ select option {
       <label>Texto con preguntas</label>
       <textarea id="import-text-content" rows="7" placeholder="Pega aquí tus preguntas…" style="font-size:16px;font-family:'Sora',sans-serif;"></textarea>
     </div>
-    <div id="import-text-preview" style="font-size:12px;color:var(--text3);margin-bottom:12px;"></div>
+    <div id="import-text-preview" style="font-size:14px;color:var(--text3);margin-bottom:12px;"></div>
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="closeModal('modal-import-text')">Cancelar</button>
       <button class="btn btn-primary" onclick="importFromText()">Importar</button>
@@ -2853,7 +2924,7 @@ select option {
   <div class="modal-sheet">
     <div class="modal-handle"></div>
     <div class="modal-title">Cobertura por categoría</div>
-    <p style="font-size:12px;color:var(--text3);margin-bottom:14px;">Porcentaje de preguntas respondidas al menos una vez.</p>
+    <p style="font-size:14px;color:var(--text3);margin-bottom:14px;">Porcentaje de preguntas respondidas al menos una vez.</p>
     <div id="coverage-list"></div>
     <button class="btn btn-secondary" onclick="closeModal('modal-coverage')" style="margin-top:8px;">Cerrar</button>
   </div>
@@ -2864,7 +2935,7 @@ select option {
   <div class="modal-sheet">
     <div class="modal-handle"></div>
     <div class="modal-title">¿Cómo quieres organizar las preguntas?</div>
-    <p style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6;">
+    <p style="font-size:15px;color:var(--text2);margin-bottom:20px;line-height:1.6;">
       Puedes organizar las preguntas en subcategorías (ej: Unidad 1, Tema 2…) o añadirlas directamente sin subcategorías.
     </p>
     <button class="btn btn-primary" id="subchoice-btn-subcat" style="margin-bottom:10px;">
@@ -2920,7 +2991,7 @@ select option {
     <div style="text-align:center;padding-bottom:16px;">
       <div style="font-size:36px;margin-bottom:6px;">📚</div>
       <div style="font-size:20px;font-weight:700;color:var(--accent3);margin-bottom:4px;">MODO ESTUDIO</div>
-      <div style="font-size:14px;color:var(--text2);">Elige cómo quieres estudiar</div>
+      <div style="font-size:16px;color:var(--text2);">Elige cómo quieres estudiar</div>
     </div>
 
     <div class="mode-subopt" onclick="closeModal('modal-study-intro'); goStudy()" style="margin-bottom:8px;">
@@ -2966,7 +3037,7 @@ select option {
     <div style="text-align:center;padding-bottom:16px;">
       <div style="font-size:36px;margin-bottom:6px;">📝</div>
       <div style="font-size:20px;font-weight:700;color:var(--accent);margin-bottom:4px;">MODO EXAMEN</div>
-      <div style="font-size:14px;color:var(--text2);">Elige el tipo de examen</div>
+      <div style="font-size:16px;color:var(--text2);">Elige el tipo de examen</div>
     </div>
 
     <div class="mode-subopt" onclick="closeModal('modal-exam-intro'); goExamConfig('real')" style="margin-bottom:8px;">
@@ -2996,7 +3067,7 @@ select option {
     <div style="text-align:center;padding-bottom:16px;">
       <div style="font-size:36px;margin-bottom:6px;">⚡</div>
       <div style="font-size:20px;font-weight:700;color:var(--danger);margin-bottom:4px;">MODO DESAFÍO</div>
-      <div style="font-size:14px;color:var(--text2);">Elige tu modo de juego</div>
+      <div style="font-size:16px;color:var(--text2);">Elige tu modo de juego</div>
     </div>
 
     <div class="mode-subopt" onclick="startChallengeCountdown('normal')" style="margin-bottom:8px;">
@@ -3005,7 +3076,7 @@ select option {
         <h4>Normal</h4>
         <p>¿Cuántas preguntas aguantas sin fallar?</p>
       </div>
-      <div style="font-size:11px;color:var(--text3);white-space:nowrap;">Récord: <span id="ch-rec-normal" style="color:var(--accent4);font-weight:700;">—</span></div>
+      <div style="font-size:13px;color:var(--text3);white-space:nowrap;">Récord: <span id="ch-rec-normal" style="color:var(--accent4);font-weight:700;">—</span></div>
     </div>
 
     <div class="mode-subopt" onclick="startChallengeCountdown('extremo')" style="margin-bottom:8px;">
@@ -3014,7 +3085,7 @@ select option {
         <h4 style="color:var(--accent2);">Extremo</h4>
         <p>6 seg. por pregunta · Un fallo o tiempo agotado = fin</p>
       </div>
-      <div style="font-size:11px;color:var(--text3);white-space:nowrap;">Récord: <span id="ch-rec-extremo" style="color:var(--accent4);font-weight:700;">—</span></div>
+      <div style="font-size:13px;color:var(--text3);white-space:nowrap;">Récord: <span id="ch-rec-extremo" style="color:var(--accent4);font-weight:700;">—</span></div>
     </div>
 
     <div class="mode-subopt" onclick="startChallengeCountdown('contrarreloj')" style="margin-bottom:20px;">
@@ -3023,7 +3094,7 @@ select option {
         <h4 style="color:var(--accent4);">Contrarreloj</h4>
         <p>1 minuto · Acierta el mayor número posible</p>
       </div>
-      <div style="font-size:11px;color:var(--text3);white-space:nowrap;">Récord: <span id="ch-rec-contrarreloj" style="color:var(--accent4);font-weight:700;">—</span></div>
+      <div style="font-size:13px;color:var(--text3);white-space:nowrap;">Récord: <span id="ch-rec-contrarreloj" style="color:var(--accent4);font-weight:700;">—</span></div>
     </div>
 
     <button class="btn btn-secondary" onclick="closeModal('modal-challenge-intro')">Cancelar</button>
@@ -3065,7 +3136,7 @@ select option {
     </div>
     <!-- "Mover a" — shown only when editing a no-subcat question and subcats exist -->
     <div id="move-to-group" style="display:none;margin-bottom:14px;">
-      <label style="display:block;font-size:12px;font-weight:500;color:var(--text2);margin-bottom:6px;">Mover a subcategoría</label>
+      <label style="display:block;font-size:14px;font-weight:500;color:var(--text2);margin-bottom:6px;">Mover a subcategoría</label>
       <select id="move-to-select" style="width:100%;">
         <option value="">— Mantener sin subcategoría —</option>
       </select>
@@ -3073,7 +3144,7 @@ select option {
     <div class="input-group">
       <label style="display:flex;justify-content:space-between;align-items:center;">
         Pregunta
-        <span id="question-charcount" style="font-size:10px;color:var(--text3);font-family:'JetBrains Mono',monospace;font-weight:400;">0/500</span>
+        <span id="question-charcount" style="font-size:12px;color:var(--text3);font-family:'JetBrains Mono',monospace;font-weight:400;">0/500</span>
       </label>
       <textarea id="edit-question" rows="3" placeholder="Escribe la pregunta…" maxlength="500"
         oninput="document.getElementById('question-charcount').textContent=this.value.length+'/500'"></textarea>
@@ -3118,7 +3189,7 @@ select option {
     <div class="modal-title">Importar / Exportar</div>
 
     <div class="section-title" style="margin-top:0;">Importar preguntas desde un archivo:</div>
-    <p style="font-size:12px;color:var(--text3);margin-bottom:10px;">Pega texto con preguntas en formato estándar directamente desde cualquier fuente.</p>
+    <p style="font-size:14px;color:var(--text3);margin-bottom:10px;">Pega texto con preguntas en formato estándar directamente desde cualquier fuente.</p>
     <button class="btn btn-secondary" onclick="closeModal('modal-ie');openImportText()" style="margin-bottom:16px;">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" style="width:16px;height:16px"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
       Importar texto
@@ -3131,7 +3202,7 @@ select option {
       Descargar JSON
     </button>
     <div class="section-title">Importar datos</div>
-    <p style="font-size:12px;color:var(--text3);margin-bottom:10px;">Selecciona un archivo JSON exportado previamente. Los datos se fusionarán con los existentes.</p>
+    <p style="font-size:14px;color:var(--text3);margin-bottom:10px;">Selecciona un archivo JSON exportado previamente. Los datos se fusionarán con los existentes.</p>
     <input type="file" id="import-file" accept=".json" onchange="importData(event)" style="display:none">
     <input type="file" id="import-stats-file" accept=".json" onchange="importStatsFile(event)" style="display:none">
     <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">
@@ -3150,7 +3221,7 @@ select option {
   <div class="modal-sheet">
     <div class="modal-handle"></div>
     <div class="modal-title" id="confirm-title">¿Confirmar?</div>
-    <p id="confirm-msg" style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6;"></p>
+    <p id="confirm-msg" style="font-size:15px;color:var(--text2);margin-bottom:20px;line-height:1.6;"></p>
     <div class="btn-row">
       <button class="btn btn-secondary" onclick="closeModal('modal-confirm')">Cancelar</button>
       <button class="btn btn-danger" id="confirm-ok">Confirmar</button>
@@ -3163,7 +3234,7 @@ select option {
   <div class="modal-sheet">
     <div class="modal-handle"></div>
     <div class="modal-title">Importar estadísticas</div>
-    <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6;">
+    <p style="font-size:15px;color:var(--text2);margin-bottom:14px;line-height:1.6;">
       Elige cómo aplicar el archivo de estadísticas.
     </p>
     <button class="btn btn-secondary" onclick="chooseStatsImportMode('aggregate')" style="margin-bottom:10px;">
@@ -4263,7 +4334,7 @@ function goReview() {
     item.className = 'review-item';
     const statusIcon = isBlank ? '⬜' : isCorrect ? '✅' : '❌';
     const flagIcon = _examFlagged.has(i) ? ' 🚩' : '';
-    const timeTag = timeStr ? `<span style="font-size:10px;color:${isSlow?'var(--warning)':'var(--text3)'};margin-left:8px;">⏱${timeStr}${isSlow?' ⚠️':''}</span>` : '';
+    const timeTag = timeStr ? `<span style="font-size:12px;color:${isSlow?'var(--warning)':'var(--text3)'};margin-left:8px;">⏱${timeStr}${isSlow?' ⚠️':''}</span>` : '';
     item.innerHTML = `
       <div class="rq">${statusIcon}${flagIcon} ${i+1}. ${esc(q.question)}${timeTag}</div>
       <div class="review-row">
@@ -4697,7 +4768,7 @@ function renderEvolutionChart(st) {
   if (!container) return;
   const history = (st.examHistory || []).filter(e => e.note !== undefined);
   if (history.length < 2) {
-    container.innerHTML = '<p style="font-size:13px;color:var(--text3);">Necesitas al menos 2 exámenes para ver la evolución.</p>';
+    container.innerHTML = '<p style="font-size:15px;color:var(--text3);">Necesitas al menos 2 exámenes para ver la evolución.</p>';
     return;
   }
 
@@ -4720,7 +4791,7 @@ function renderEvolutionChart(st) {
 
   const weeks = Object.entries(weekMap).sort(([a],[b]) => a.localeCompare(b)).slice(-8);
   if (weeks.length < 2) {
-    container.innerHTML = '<p style="font-size:13px;color:var(--text3);">Necesitas exámenes en al menos 2 semanas distintas.</p>';
+    container.innerHTML = '<p style="font-size:15px;color:var(--text3);">Necesitas exámenes en al menos 2 semanas distintas.</p>';
     return;
   }
 
@@ -4762,7 +4833,7 @@ function renderEvolutionChart(st) {
         <text x="${px(i)}" y="${py(x.avg)-9}" text-anchor="middle" font-size="9" fill="var(--text2)" font-weight="600">${x.avg.toFixed(1)}</text>
       `).join('')}
     </svg>
-    <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:2px;padding:0 ${padR}px 0 ${padL}px;">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-top:2px;padding:0 ${padR}px 0 ${padL}px;">
       ${avgs.map(x=>`<span>${x.w.slice(5)}</span>`).join('')}
     </div>
   `;
@@ -4821,14 +4892,14 @@ function searchEditorQuestions(query) {
   ).slice(0, 20);
 
   if (matches.length === 0) {
-    resultsDiv.innerHTML = `<div style="font-size:13px;color:var(--text3);padding:8px 0;">Sin resultados para "${esc(query)}"</div>`;
+    resultsDiv.innerHTML = `<div style="font-size:15px;color:var(--text3);padding:8px 0;">Sin resultados para "${esc(query)}"</div>`;
     resultsDiv.style.display = 'block';
     return;
   }
 
   const st = loadStats();
   const letters = ['A','B','C','D'];
-  resultsDiv.innerHTML = `<div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:8px;">${matches.length} resultado${matches.length===1?'':'s'}</div>`;
+  resultsDiv.innerHTML = `<div style="font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text3);margin-bottom:8px;">${matches.length} resultado${matches.length===1?'':'s'}</div>`;
   matches.forEach(q2 => {
     const qst = st.questions[q2.id];
     let pctHtml = '';
@@ -4836,15 +4907,15 @@ function searchEditorQuestions(query) {
       const tot = qst.correct+qst.wrong;
       const pct = Math.round(qst.correct/tot*100);
       const col = pct>=70?'var(--success)':pct>=45?'var(--warning)':'var(--danger)';
-      pctHtml = `<span style="font-size:10px;color:${col};font-family:'JetBrains Mono',monospace;">${pct}%</span>`;
+      pctHtml = `<span style="font-size:12px;color:${col};font-family:'JetBrains Mono',monospace;">${pct}%</span>`;
     }
     const item = document.createElement('div');
     item.className = 'q-editor-item';
     item.style.marginBottom = '8px';
     item.innerHTML = `
-      <div style="font-size:10px;color:var(--accent3);margin-bottom:4px;">${esc(q2.cat)}${q2.subcat?' · '+esc(q2.subcat):''}</div>
+      <div style="font-size:12px;color:var(--accent3);margin-bottom:4px;">${esc(q2.cat)}${q2.subcat?' · '+esc(q2.subcat):''}</div>
       <div class="q-editor-text">${esc(q2.question)}</div>
-      <div style="font-size:11px;color:var(--text3);margin-bottom:6px;display:flex;justify-content:space-between;">
+      <div style="font-size:13px;color:var(--text3);margin-bottom:6px;display:flex;justify-content:space-between;">
         <span>✓ ${letters[q2.correct]}) ${esc([q2.a,q2.b,q2.c,q2.d][q2.correct])}</span>${pctHtml}
       </div>
       <div class="q-editor-actions">
@@ -5326,16 +5397,16 @@ function renderQItem(list, q, letters, showSubcat, statsCache) {
     const total = qStats.correct + qStats.wrong;
     const pct = Math.round((qStats.correct / total) * 100);
     const color = pct >= 70 ? 'var(--success)' : pct >= 45 ? 'var(--warning)' : 'var(--danger)';
-    statsHtml = `<span style="font-size:10px;color:${color};font-family:'JetBrains Mono',monospace;">${pct}% (${total})</span>`;
+    statsHtml = `<span style="font-size:12px;color:${color};font-family:'JetBrains Mono',monospace;">${pct}% (${total})</span>`;
   }
   const subcatTag = showSubcat && q.subcat
-    ? `<span style="font-size:10px;color:var(--accent3);margin-left:6px;padding:1px 6px;border-radius:4px;background:rgba(110,255,184,.1);">${esc(q.subcat)}</span>`
+    ? `<span style="font-size:12px;color:var(--accent3);margin-left:6px;padding:1px 6px;border-radius:4px;background:rgba(110,255,184,.1);">${esc(q.subcat)}</span>`
     : '';
   const item = document.createElement('div');
   item.className = 'q-editor-item';
   item.innerHTML = `
     <div class="q-editor-text">${esc(q.question)}</div>
-    <div style="font-size:11px;color:var(--text3);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">
+    <div style="font-size:13px;color:var(--text3);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">
       <span>✓ ${letters[q.correct]}) ${esc([q.a,q.b,q.c,q.d][q.correct])}${subcatTag}</span>
       ${statsHtml}
     </div>
@@ -6215,7 +6286,7 @@ function buildHistoryCard(e, compact) {
     <div style="flex-shrink:0;width:44px;height:44px;border-radius:10px;
       background:var(--bg);border:2px solid ${noteColor};
       display:flex;align-items:center;justify-content:center;
-      font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${noteColor};">
+      font-size:16px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${noteColor};">
       ${noteStr}
     </div>`;
 
@@ -6225,35 +6296,35 @@ function buildHistoryCard(e, compact) {
     info = `
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap;">
-          <span style="font-size:10px;font-weight:600;color:${modeColor};">${modeLabel}</span>
-          <span style="font-size:11px;color:var(--text3);">${dateStr} · ${timeStr}</span>
+          <span style="font-size:12px;font-weight:600;color:${modeColor};">${modeLabel}</span>
+          <span style="font-size:13px;color:var(--text3);">${dateStr} · ${timeStr}</span>
         </div>
-        <div style="font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(e.cat || '—')}</div>
-        <div style="display:flex;gap:8px;font-size:11px;font-family:'JetBrains Mono',monospace;margin-top:3px;">
+        <div style="font-size:13px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(e.cat || '—')}</div>
+        <div style="display:flex;gap:8px;font-size:13px;font-family:'JetBrains Mono',monospace;margin-top:3px;">
           <span style="color:var(--success);">✓${correct}</span>
           <span style="color:var(--danger);">✗${wrong}</span>
           <span style="color:var(--text3);">—${blank}</span>
-          <span style="color:var(--text3);font-size:10px;">/${total}</span>
+          <span style="color:var(--text3);font-size:12px;">/${total}</span>
         </div>
       </div>`;
   } else {
     // Full detail for history screen
     const subcatBlock = e.subcats && e.subcats.length > 0
-      ? `<div style="font-size:11px;color:var(--text3);margin-top:3px;line-height:1.6;">${e.subcats.slice(0,6).map(s=>esc(s)).join(' · ')}${e.subcats.length>6?` +${e.subcats.length-6} más`:''}</div>`
+      ? `<div style="font-size:13px;color:var(--text3);margin-top:3px;line-height:1.6;">${e.subcats.slice(0,6).map(s=>esc(s)).join(' · ')}${e.subcats.length>6?` +${e.subcats.length-6} más`:''}</div>`
       : '';
     info = `
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap;">
-          <span style="font-size:10px;font-weight:600;color:${modeColor};">${modeLabel}</span>
-          <span style="font-size:11px;color:var(--text3);">${dateStr} · ${timeStr}</span>
+          <span style="font-size:12px;font-weight:600;color:${modeColor};">${modeLabel}</span>
+          <span style="font-size:13px;color:var(--text3);">${dateStr} · ${timeStr}</span>
         </div>
-        <div style="font-size:12px;font-weight:500;color:var(--text2);">${esc(e.cat || '—')}</div>
+        <div style="font-size:14px;font-weight:500;color:var(--text2);">${esc(e.cat || '—')}</div>
         ${subcatBlock}
-        <div style="display:flex;gap:10px;font-size:12px;font-family:'JetBrains Mono',monospace;margin-top:4px;">
+        <div style="display:flex;gap:10px;font-size:14px;font-family:'JetBrains Mono',monospace;margin-top:4px;">
           <span style="color:var(--success);">✓ ${correct}</span>
           <span style="color:var(--danger);">✗ ${wrong}</span>
           <span style="color:var(--text3);">— ${blank}</span>
-          <span style="color:var(--text3);font-size:10px;">/ ${total}</span>
+          <span style="color:var(--text3);font-size:12px;">/ ${total}</span>
         </div>
       </div>`;
   }
@@ -6269,7 +6340,7 @@ function renderHistoryChart(st) {
   const btn = document.getElementById('btn-ver-historial');
 
   if (history.length === 0) {
-    container.innerHTML = '<p style="font-size:13px;color:var(--text3);">Completa exámenes para ver tu evolución.</p>';
+    container.innerHTML = '<p style="font-size:15px;color:var(--text3);">Completa exámenes para ver tu evolución.</p>';
     if (btn) btn.style.display = 'none';
     return;
   }
@@ -6311,7 +6382,7 @@ function buildStudyCard(e, compact) {
       border: 2px solid ${pctColor};
       background:var(--bg);
       display:flex;align-items:center;justify-content:center;
-      font-size:13px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${pctColor};">
+      font-size:15px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${pctColor};">
       ${pct}%
     </div>`;
 
@@ -6319,11 +6390,11 @@ function buildStudyCard(e, compact) {
     card.innerHTML = pill + `
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap;">
-          <span style="font-size:10px;font-weight:600;color:${phaseColor};">${phase}</span>
-          <span style="font-size:11px;color:var(--text3);">${dateStr} · ${timeStr}</span>
+          <span style="font-size:12px;font-weight:600;color:${phaseColor};">${phase}</span>
+          <span style="font-size:13px;color:var(--text3);">${dateStr} · ${timeStr}</span>
         </div>
-        <div style="font-size:11px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(e.cats || '—')}</div>
-        <div style="display:flex;gap:8px;font-size:11px;font-family:'JetBrains Mono',monospace;margin-top:3px;">
+        <div style="font-size:13px;color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(e.cats || '—')}</div>
+        <div style="display:flex;gap:8px;font-size:13px;font-family:'JetBrains Mono',monospace;margin-top:3px;">
           <span style="color:var(--success);">✓${e.correct ?? '—'}</span>
           <span style="color:var(--danger);">✗${e.wrong ?? '—'}</span>
           <span style="color:var(--text3);">/${e.total ?? '—'}</span>
@@ -6334,11 +6405,11 @@ function buildStudyCard(e, compact) {
     card.innerHTML = pill + `
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap;">
-          <span style="font-size:10px;font-weight:600;color:${phaseColor};">${phase}</span>
-          <span style="font-size:11px;color:var(--text3);">${dateStr} · ${timeStr}</span>
+          <span style="font-size:12px;font-weight:600;color:${phaseColor};">${phase}</span>
+          <span style="font-size:13px;color:var(--text3);">${dateStr} · ${timeStr}</span>
         </div>
-        <div style="font-size:12px;font-weight:500;color:var(--text2);margin-bottom:3px;">${esc(e.cats || '—')}</div>
-        <div style="display:flex;gap:10px;font-size:12px;font-family:'JetBrains Mono',monospace;flex-wrap:wrap;">
+        <div style="font-size:14px;font-weight:500;color:var(--text2);margin-bottom:3px;">${esc(e.cats || '—')}</div>
+        <div style="display:flex;gap:10px;font-size:14px;font-family:'JetBrains Mono',monospace;flex-wrap:wrap;">
           <span style="color:var(--success);">✓ ${e.correct ?? '—'} correctas</span>
           <span style="color:var(--danger);">✗ ${e.wrong ?? '—'} falladas</span>
           <span style="color:var(--text3);">/ ${e.total ?? '—'} total</span>
@@ -6356,7 +6427,7 @@ function renderStudyHistorySection(st) {
   const history = st.studyHistory || [];
 
   if (history.length === 0) {
-    container.innerHTML = '<p style="font-size:13px;color:var(--text3);">Completa sesiones de estudio para ver tu evolución.</p>';
+    container.innerHTML = '<p style="font-size:15px;color:var(--text3);">Completa sesiones de estudio para ver tu evolución.</p>';
     if (btn) btn.style.display = 'none';
     return;
   }
@@ -6468,7 +6539,7 @@ function renderStats() {
   });
 
   if (catEntries.length === 0) {
-    catList.innerHTML = '<p style="font-size:13px;color:var(--text3);">Sin datos por categoría aún.</p>';
+    catList.innerHTML = '<p style="font-size:15px;color:var(--text3);">Sin datos por categoría aún.</p>';
   }
 
   catEntries.forEach(([cat, data]) => {
@@ -6490,8 +6561,8 @@ function renderStats() {
         subcatHTML += `
           <div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
-              <span style="font-size:11px;color:var(--text2);padding-left:8px;border-left:2px solid ${sc};">${esc(label)}</span>
-              <span style="font-size:11px;font-family:'JetBrains Mono',monospace;"><span style="color:${sc};">${sp}%</span> · <span style="color:var(--success);">${sd.correct}✓</span> <span style="color:var(--danger);">${sd.wrong}✗</span></span>
+              <span style="font-size:13px;color:var(--text2);padding-left:8px;border-left:2px solid ${sc};">${esc(label)}</span>
+              <span style="font-size:13px;font-family:'JetBrains Mono',monospace;"><span style="color:${sc};">${sp}%</span> · <span style="color:var(--success);">${sd.correct}✓</span> <span style="color:var(--danger);">${sd.wrong}✗</span></span>
             </div>
             <div style="height:3px;background:var(--surface3);border-radius:2px;margin-left:8px;">
               <div style="height:100%;width:${sp}%;background:${sc};border-radius:2px;"></div>
@@ -6513,9 +6584,9 @@ function renderStats() {
         <div class="stat-bar-fill" style="width:${p}%;background:${color};"></div>
       </div>
       <div style="display:flex;justify-content:space-between;margin-top:6px;">
-        <span style="font-size:11px;color:var(--success);">${data.correct} ✓</span>
-        <span style="font-size:11px;color:var(--text3);">${total} respondidas</span>
-        <span style="font-size:11px;color:var(--danger);">${data.wrong} ✗</span>
+        <span style="font-size:13px;color:var(--success);">${data.correct} ✓</span>
+        <span style="font-size:13px;color:var(--text3);">${total} respondidas</span>
+        <span style="font-size:13px;color:var(--danger);">${data.wrong} ✗</span>
       </div>
       ${subcatHTML}
     `;
@@ -6534,7 +6605,7 @@ function renderStats() {
   const hardList = document.getElementById('st-hardest-list');
   hardList.innerHTML = '';
   if (hardest.length === 0) {
-    hardList.innerHTML = '<p style="font-size:13px;color:var(--text3);">Sin fallos registrados aún. ¡Buen trabajo!</p>';
+    hardList.innerHTML = '<p style="font-size:15px;color:var(--text3);">Sin fallos registrados aún. ¡Buen trabajo!</p>';
   }
   hardest.forEach(q => {
     const total = q.correct + q.wrong;
@@ -6547,7 +6618,7 @@ function renderStats() {
         <span class="badge badge-accent">${esc(q.cat)}</span>
         ${q.subcat ? `<span class="badge" style="background:rgba(110,255,184,.1);color:var(--accent3);">${esc(q.subcat)}</span>` : ''}
         <span class="badge badge-danger">${failPct}% fallos</span>
-        <span style="font-size:11px;color:var(--text3);margin-left:auto;">${q.wrong}✗ / ${q.correct}✓</span>
+        <span style="font-size:13px;color:var(--text3);margin-left:auto;">${q.wrong}✗ / ${q.correct}✓</span>
       </div>
     `;
     hardList.appendChild(div);
@@ -6565,7 +6636,7 @@ function renderStats() {
   const easyList = document.getElementById('st-easiest-list');
   easyList.innerHTML = '';
   if (easiest.length === 0) {
-    easyList.innerHTML = '<p style="font-size:13px;color:var(--text3);">Sin aciertos registrados aún.</p>';
+    easyList.innerHTML = '<p style="font-size:15px;color:var(--text3);">Sin aciertos registrados aún.</p>';
   }
   easiest.forEach(q => {
     const total = q.correct + q.wrong;
@@ -6578,7 +6649,7 @@ function renderStats() {
         <span class="badge badge-accent">${esc(q.cat)}</span>
         ${q.subcat ? `<span class="badge" style="background:rgba(110,255,184,.1);color:var(--accent3);">${esc(q.subcat)}</span>` : ''}
         <span class="badge badge-success">${okPct}% aciertos</span>
-        <span style="font-size:11px;color:var(--text3);margin-left:auto;">${q.correct}✓ / ${q.wrong}✗</span>
+        <span style="font-size:13px;color:var(--text3);margin-left:auto;">${q.correct}✓ / ${q.wrong}✗</span>
       </div>
     `;
     easyList.appendChild(div);
@@ -7068,10 +7139,10 @@ function buildChallengeHistoryCard(e) {
     <div style="flex-shrink:0;width:44px;height:44px;border-radius:10px;background:var(--bg);border:2px solid ${scoreColor};display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;font-family:'JetBrains Mono',monospace;color:${scoreColor};">${score}</div>
     <div style="flex:1;min-width:0;">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;flex-wrap:wrap;">
-        <span style="font-size:10px;font-weight:600;color:${modeColor};">${modeLabel}</span>
-        <span style="font-size:11px;color:var(--text3);">${dateStr} · ${timeStr}</span>
+        <span style="font-size:12px;font-weight:600;color:${modeColor};">${modeLabel}</span>
+        <span style="font-size:13px;color:var(--text3);">${dateStr} · ${timeStr}</span>
       </div>
-      <div style="font-size:12px;color:var(--text2);">${scoreLabel}</div>
+      <div style="font-size:14px;color:var(--text2);">${scoreLabel}</div>
     </div>`;
   return card;
 }
@@ -7083,7 +7154,7 @@ function renderChallengeHistorySection(st) {
   container.innerHTML = '';
   const history = st.challengeHistory || [];
   if (history.length === 0) {
-    container.innerHTML = '<p style="font-size:13px;color:var(--text3);">Juega partidas de Desafío para ver tu historial.</p>';
+    container.innerHTML = '<p style="font-size:15px;color:var(--text3);">Juega partidas de Desafío para ver tu historial.</p>';
     if (btn) btn.style.display = 'none';
     return;
   }
@@ -7366,10 +7437,10 @@ function renderErrorReview() {
     item.style.marginBottom = '8px';
     item.innerHTML = `
       <div class="rq" style="margin-bottom:6px;">❌ ${esc(qSt.text || (dbQ ? dbQ.question : '(pregunta eliminada)'))}</div>
-      ${correctAnswer ? `<div style="font-size:12px;color:var(--success);margin-bottom:6px;padding:6px 10px;background:rgba(79,255,170,.08);border-radius:6px;border-left:3px solid var(--success);">
+      ${correctAnswer ? `<div style="font-size:14px;color:var(--success);margin-bottom:6px;padding:6px 10px;background:rgba(79,255,170,.08);border-radius:6px;border-left:3px solid var(--success);">
         ✓ Respuesta correcta: <strong>${esc(correctAnswer)}</strong>
       </div>` : ''}
-      <div style="display:flex;gap:12px;font-size:11px;font-family:'JetBrains Mono',monospace;">
+      <div style="display:flex;gap:12px;font-size:13px;font-family:'JetBrains Mono',monospace;">
         <span style="color:var(--danger);">✗ ${qSt.wrong} fallos</span>
         <span style="color:var(--success);">✓ ${qSt.correct} aciertos</span>
         <span style="color:var(--warning);">${failPct}% fallo</span>
@@ -7390,7 +7461,7 @@ function openCoverage() {
   const cats = getCategories();
 
   if (cats.length === 0) {
-    list.innerHTML = '<p style="font-size:13px;color:var(--text3);">No hay preguntas.</p>';
+    list.innerHTML = '<p style="font-size:15px;color:var(--text3);">No hay preguntas.</p>';
     openModal('modal-coverage');
     return;
   }
@@ -7404,8 +7475,8 @@ function openCoverage() {
     item.style.cssText = 'margin-bottom:14px;';
     item.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-        <span style="font-size:13px;font-weight:500;">${esc(cat)}</span>
-        <span style="font-size:12px;font-family:'JetBrains Mono',monospace;color:${color};">${seen}/${qs.length} · ${pct}%</span>
+        <span style="font-size:15px;font-weight:500;">${esc(cat)}</span>
+        <span style="font-size:14px;font-family:'JetBrains Mono',monospace;color:${color};">${seen}/${qs.length} · ${pct}%</span>
       </div>
       <div style="height:6px;background:var(--surface3);border-radius:3px;overflow:hidden;">
         <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width .4s;"></div>
